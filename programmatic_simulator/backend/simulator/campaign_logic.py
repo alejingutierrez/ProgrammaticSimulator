@@ -39,6 +39,74 @@ GOAL_IMPRESSION_MODIFIERS = {
 BASE_ENGAGEMENT_RATE_PER_CLICK = 0.06  # 6% de los clics generan alguna interacción base
 BASE_CONVERSION_RATE_PER_CLICK = 0.0075 # 0.75% de los clics convierten base
 
+
+def _calculate_audience_size_details(audiencia_id, selected_interes_ids=None):
+    """
+    Calcula el tamaño potencial y refinado de la audiencia.
+    Retorna un diccionario con los detalles del tamaño o un error.
+    """
+    audiencia = market_data.obtener_audiencia_por_id(audiencia_id)
+    feedback_messages = []
+
+    if not audiencia:
+        return {
+            "audience_found": False,
+            "error_message": "Audiencia no encontrada",
+            "status_code": 404,
+            "potential_audience_size_from_segment": 0,
+            "refined_potential_audience_size": 0,
+            "feedback_messages": ["ERROR: Audiencia ID no válida o no encontrada."]
+        }
+
+    # --- Determinación del Tamaño de Audiencia Potencial por Segmento ---
+    potential_audience_size_from_segment = 20000000  # Default grande si no se encuentra específico
+    all_population_segments = market_data.obtener_todos_los_segmentos_poblacion()
+
+    if all_population_segments:
+        relevant_segments = [
+            seg for seg in all_population_segments
+            if audiencia["id"] in seg.get("relates_to_audience_ids", [])
+        ]
+        if relevant_segments:
+            relevant_segments.sort(key=lambda s: s["size"])
+            potential_audience_size_from_segment = relevant_segments[0]["size"]
+            feedback_messages.append(f"INFO: Segmento de población '{relevant_segments[0]['nombre_segmento']}' (tamaño: {potential_audience_size_from_segment:,}) usado para estimar alcance máximo.")
+            if potential_audience_size_from_segment < 1000000:
+                 feedback_messages.append("INFO: El segmento de audiencia seleccionado es bastante específico, lo que podría limitar el alcance máximo.")
+        else:
+            total_col_segment = next((s for s in all_population_segments if s["segment_id"] == "total_colombia"), None)
+            if total_col_segment:
+                potential_audience_size_from_segment = int(total_col_segment["size"] * 0.25)
+                feedback_messages.append(f"INFO: No se encontró un segmento de población directamente relacionado. Usando estimación basada en población total ({potential_audience_size_from_segment:,}).")
+            else: # Fallback si ni siquiera total_colombia está
+                feedback_messages.append(f"WARNING: No se encontró segmento de población específico ni 'total_colombia'. Usando default amplio: {potential_audience_size_from_segment:,}.")
+
+
+    # --- Refinar Audiencia por Intereses ---
+    num_selected_intereses = len(selected_interes_ids) if selected_interes_ids else 0
+    if num_selected_intereses > 0:
+        # Aplicar reducción por cada capa de interés
+        # La fórmula original era: (INTEREST_PENETRATION_ESTIMATE ** (num_selected_intereses * 0.5))
+        # Se ajusta para ser un poco menos agresiva y más interpretable.
+        # Cada grupo de intereses reduce, pero no exponencialmente tan drástico.
+        # Por ejemplo, si hay 1-2 intereses, se aplica una vez. Si hay 3-4, dos veces, etc.
+        # Factor de reducción basado en el número de intereses.
+        reduction_factor_power = math.ceil(num_selected_intereses / 2.0) # Grupos de 2 intereses
+        refined_potential_audience_size = potential_audience_size_from_segment * (INTEREST_PENETRATION_ESTIMATE ** reduction_factor_power)
+        refined_potential_audience_size = max(1000, int(refined_potential_audience_size)) # Mínimo 1000 personas
+        feedback_messages.append(f"INFO: Audiencia refinada por {num_selected_intereses} intereses a ~{refined_potential_audience_size:,} personas.")
+    else:
+        refined_potential_audience_size = potential_audience_size_from_segment
+        feedback_messages.append("INFO: No se seleccionaron intereses, el tamaño refinado es igual al potencial del segmento.")
+
+    return {
+        "potential_audience_size_from_segment": potential_audience_size_from_segment,
+        "refined_potential_audience_size": refined_potential_audience_size,
+        "audience_found": True,
+        "feedback_messages": feedback_messages,
+        "status_code": 200
+    }
+
 def _normalize_text_for_matching(text):
     if not text: return ""
     text = str(text).lower()
@@ -57,48 +125,43 @@ def simular_campana(marca_id, audiencia_id, presupuesto, selected_interes_ids=No
     if not campaign_goal:
         campaign_goal = market_data.obtener_campaign_goal_por_id(DEFAULT_CAMPAIGN_GOAL_ID)
 
-    mensajes_feedback = []
+    mensajes_feedback = [] # Initialize messages for simular_campana
 
-    if not marca or not audiencia:
-        mensajes_feedback.append("Error crítico: Marca o audiencia no encontrada.")
+    # --- Obtener detalles del tamaño de la audiencia ---
+    audience_size_details = _calculate_audience_size_details(audiencia_id, selected_interes_ids)
+
+    if not audience_size_details["audience_found"]:
+        # Propagate error if audience not found by the detail function
         return {
-            "error": "Marca o audiencia no encontrada.", "puntuacion": 0, "impresiones": 0,
-            "clics": 0, "ctr_calculado":0, "cpm_calculado": 0, "cpc_calculado": 0,
-            "presupuesto_gastado": 0, "interest_match_score": 0, "selected_intereses_nombres": [],
+            "error": audience_size_details["error_message"],
+            "puntuacion": 0, "impresiones": 0, "clics": 0, "ctr_calculado":0,
+            "cpm_calculado": 0, "cpc_calculado": 0, "presupuesto_gastado": 0,
+            "interest_match_score": 0, "selected_intereses_nombres": [],
             "campaign_goal_nombre": campaign_goal["nombre"] if campaign_goal else "N/A",
             "interacciones_calculadas":0, "conversiones_calculadas":0, "afinidad_marca_audiencia":0,
-            "mensajes_feedback": mensajes_feedback,
-            "potential_audience_size_from_segment": 0, # Ensure key exists even in error
-            "refined_potential_audience_size": 0 # Ensure key exists even in error
+            "mensajes_feedback": audience_size_details.get("feedback_messages", ["Error: Audiencia no encontrada."]),
+            "potential_audience_size_from_segment": 0,
+            "refined_potential_audience_size": 0
         }
 
-    # --- Determinación del Tamaño de Audiencia Potencial por Segmento ---
-    potential_audience_size_from_segment = 20000000 # Default grande
-    all_population_segments = market_data.obtener_todos_los_segmentos_poblacion()
-    found_segment = False
-    if all_population_segments:
-        relevant_segments = [
-            seg for seg in all_population_segments
-            if audiencia["id"] in seg.get("relates_to_audience_ids", [])
-        ]
-        if relevant_segments:
-            # Usar el segmento más pequeño como el más específico
-            relevant_segments.sort(key=lambda s: s["size"])
-            potential_audience_size_from_segment = relevant_segments[0]["size"]
-            mensajes_feedback.append(f"INFO: Segmento de población '{relevant_segments[0]['nombre_segmento']}' (tamaño: {potential_audience_size_from_segment:,}) usado para estimar alcance máximo.")
-            found_segment = True
-            if potential_audience_size_from_segment < 1000000:
-                 mensajes_feedback.append("INFO: El segmento de audiencia seleccionado es bastante específico, lo que podría limitar el alcance máximo.")
-        else:
-            # Si no hay segmento directo, usar una porción de la población total si está disponible
-            total_col_segment = next((s for s in all_population_segments if s["segment_id"] == "total_colombia"), None)
-            if total_col_segment:
-                potential_audience_size_from_segment = int(total_col_segment["size"] * 0.25) # Estimación general
-                mensajes_feedback.append(f"INFO: No se encontró un segmento de población directamente relacionado. Usando estimación basada en población total ({potential_audience_size_from_segment:,}).")
+    potential_audience_size_from_segment = audience_size_details["potential_audience_size_from_segment"]
+    refined_potential_audience_size = audience_size_details["refined_potential_audience_size"]
+    if audience_size_details.get("feedback_messages"):
+        mensajes_feedback.extend(audience_size_details["feedback_messages"])
+
+    # Retrieve audiencia object again, as _calculate_audience_size_details already fetched it
+    # This is slightly redundant but ensures simular_campana has its own reference if needed beyond size.
+    # Alternatively, _calculate_audience_size_details could return the audiencia object. For now, keeping it simple.
+    audiencia = market_data.obtener_audiencia_por_id(audiencia_id)
+    if not marca: # Audiencia check is implicitly done by audience_size_details
+        return { "error": "Marca no encontrada.", "puntuacion": 0, "impresiones": 0, "clics": 0,
+                 "mensajes_feedback": ["Error crítico: Marca no encontrada."],
+                 "potential_audience_size_from_segment": potential_audience_size_from_segment,
+                 "refined_potential_audience_size": refined_potential_audience_size}
 
 
     puntuacion_actual = PUNTUACION_INICIAL
-    afinidad_marca_audiencia = audiencia["afinidad_marca_categoria"].get(marca["categoria"], 0.05)
+    afinidad_marca_audiencia = audiencia["afinidad_marca_categoria"].get(marca["categoria"], 0.05) if audiencia else 0.05
 
     if afinidad_marca_audiencia >= 0.7: puntuacion_actual += BONUS_BUEN_TARGETING
     elif afinidad_marca_audiencia >= 0.4: puntuacion_actual += (BONUS_BUEN_TARGETING / 2)
@@ -174,14 +237,7 @@ def simular_campana(marca_id, audiencia_id, presupuesto, selected_interes_ids=No
     if presupuesto > PRESUPUESTO_ALTO: factor_alcance_efectivo = min(1.0, factor_alcance_efectivo * 1.1)
     impresiones_efectivas = int(impresiones_posibles_brutas * factor_alcance_efectivo * impresion_goal_modifier)
 
-    # --- Refinar Audiencia por Intereses y Limitar Impresiones por Población ---
-    if num_selected_intereses > 0:
-        # Aplicar reducción por cada capa de interés (placeholder)
-        refined_potential_audience_size = potential_audience_size_from_segment * (INTEREST_PENETRATION_ESTIMATE ** (num_selected_intereses * 0.5))
-        refined_potential_audience_size = max(1000, int(refined_potential_audience_size)) # Mínimo 1000 personas
-    else:
-        refined_potential_audience_size = potential_audience_size_from_segment
-
+    # Limitar Impresiones por Población (refined_potential_audience_size ya está calculado)
     if impresiones_efectivas > refined_potential_audience_size:
         impresiones_efectivas = refined_potential_audience_size
         mensajes_feedback.append("INFO: El alcance de la campaña (impresiones) ha sido limitado por el tamaño estimado del segmento de audiencia y los intereses seleccionados.")

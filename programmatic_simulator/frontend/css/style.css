@@ -103,3 +103,29 @@ hr {
 select option[value=""] {
     color: #888;
 }
+
+#estimatedAudienceSizeContainer {
+    background-color: #f0f9ff;
+    border: 1px solid #cce5ff;
+    padding: 10px;
+    margin-bottom: 20px;
+    border-radius: 5px;
+    text-align: center;
+}
+
+#estimatedAudienceDisplay {
+    font-weight: bold;
+}
+
+#audienceDescriptionContainer {
+    margin-top: 5px;
+    padding: 8px;
+    background-color: #e9ecef; /* A light grey background */
+    border-radius: 4px;
+    font-size: 0.9em;
+    color: #495057; /* Darker grey text */
+}
+
+.audience-description-text {
+    margin: 0;
+}

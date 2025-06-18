@@ -1,11 +1,13 @@
 # programmatic_simulator/backend/main.py
 from flask import Flask, request, jsonify
 from flask_cors import CORS # Importar CORS
-from simulator.campaign_logic import simular_campana
+from simulator.campaign_logic import simular_campana, _calculate_audience_size_details # Importar la nueva función
 from data.market_data import MARCAS_COLOMBIANAS, AUDIENCIAS_COLOMBIANAS, obtener_todos_los_intereses, obtener_todos_los_campaign_goals
 
 app = Flask(__name__)
 CORS(app) # Habilitar CORS para todas las rutas y orígenes
+
+# Dummy function calculate_audience_size has been removed.
 
 @app.route('/')
 def home():
@@ -65,6 +67,31 @@ def api_simular_campana():
          return jsonify(resultado_simulacion), 404
 
     return jsonify(resultado_simulacion)
+
+@app.route('/api/estimate-audience-size', methods=['GET'])
+def estimate_audience_size_endpoint():
+    audiencia_id = request.args.get('audienciaId')
+    selected_interes_ids = request.args.getlist('selectedInteresIds') # Use getlist for multiple values
+
+    if not audiencia_id:
+        return jsonify({"error": "El parámetro 'audienciaId' es requerido."}), 400
+
+    # Call the new function from campaign_logic
+    result = _calculate_audience_size_details(audiencia_id, selected_interes_ids)
+
+    if not result.get("audience_found"):
+        # The status_code should be present if audience_found is False
+        status_code = result.get("status_code", 404)
+        return jsonify({"error": result.get("error_message", "Error al calcular la audiencia.")}), status_code
+
+    # Return only the relevant sizing details for this endpoint, not internal flags like 'audience_found'
+    response_data = {
+        "potential_audience_size_from_segment": result.get("potential_audience_size_from_segment"),
+        "refined_potential_audience_size": result.get("refined_potential_audience_size"),
+        # Optionally, include some feedback messages if they are relevant for this specific endpoint
+        # "feedback": result.get("feedback_messages")
+    }
+    return jsonify(response_data)
 
 if __name__ == '__main__':
     # Puerto 5001 para evitar conflictos comunes con el puerto 5000
