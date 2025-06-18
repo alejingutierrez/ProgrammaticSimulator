@@ -2,7 +2,7 @@
 from flask import Flask, request, jsonify
 from flask_cors import CORS # Importar CORS
 from simulator.campaign_logic import simular_campana, _calculate_audience_size_details # Importar la nueva función
-from data.market_data import MARCAS_COLOMBIANAS, AUDIENCIAS_COLOMBIANAS, obtener_todos_los_intereses, obtener_todos_los_campaign_goals
+from data.market_data import MARCAS_COLOMBIANAS, AUDIENCIAS_COLOMBIANAS, obtener_todos_los_intereses, obtener_todos_los_campaign_goals, obtener_marca_por_id # Importar obtener_marca_por_id
 
 app = Flask(__name__)
 CORS(app) # Habilitar CORS para todas las rutas y orígenes
@@ -96,3 +96,13 @@ def estimate_audience_size_endpoint():
 if __name__ == '__main__':
     # Puerto 5001 para evitar conflictos comunes con el puerto 5000
     app.run(debug=True, port=5001)
+
+
+@app.route('/api/products/<brand_id>', methods=['GET'])
+def get_products_by_brand(brand_id):
+    """Endpoint para obtener los productos de una marca específica."""
+    marca = obtener_marca_por_id(brand_id)
+    if marca:
+        return jsonify(marca.get("productos", []))
+    else:
+        return jsonify({"error": "Brand not found"}), 404

@@ -20,9 +20,9 @@ BONUS_BUEN_TARGETING = 1.5           # Bonus por excelente afinidad/intereses
 PRESUPUESTO_MINIMO_IMPACTO = 50000   # Por debajo de esto, la campaña podría ser inefectiva
 PRESUPUESTO_BAJO = 150000            # Umbral para considerar presupuesto bajo
 PRESUPUESTO_ALTO = 1000000           # Umbral para considerar presupuesto alto
-PUNTOS_PRESUESTO_BAJO = -0.5
-PUNTOS_PRESUESTO_ALTO = 0.5
-PUNTOS_PRESUESTO_MUY_BAJO = -1.0     # Si es demasiado bajo para el objetivo
+PUNTOS_PRESUESTO_BAJO = -0.25        # Halved from -0.5
+PUNTOS_PRESUESTO_ALTO = 0.25         # Halved from 0.5
+PUNTOS_PRESUESTO_MUY_BAJO = -0.5     # Halved from -1.0 (Si es demasiado bajo para el objetivo)
 
 # Modificadores de Métricas por Objetivo
 GOAL_CTR_MODIFIERS = {
@@ -116,7 +116,7 @@ def _normalize_text_for_matching(text):
         text = text.replace(accented, unaccented)
     return " ".join(text.split()) # Collapse multiple spaces and strip leading/trailing
 
-def simular_campana(marca_id, audiencia_id, presupuesto, selected_interes_ids=None, campaign_goal_id=None):
+def simular_campana(marca_id, audiencia_id, presupuesto, selected_interes_ids=None, campaign_goal_id=None, selected_product_ids=None): # Added selected_product_ids
     marca = market_data.obtener_marca_por_id(marca_id)
     audiencia = market_data.obtener_audiencia_por_id(audiencia_id)
 
@@ -159,9 +159,37 @@ def simular_campana(marca_id, audiencia_id, presupuesto, selected_interes_ids=No
                  "potential_audience_size_from_segment": potential_audience_size_from_segment,
                  "refined_potential_audience_size": refined_potential_audience_size}
 
-
     puntuacion_actual = PUNTUACION_INICIAL
-    afinidad_marca_audiencia = audiencia["afinidad_marca_categoria"].get(marca["categoria"], 0.05) if audiencia else 0.05
+
+    # --- Cálculo de Afinidad Marca-Audiencia (con posible sobreescritura por producto) ---
+    afinidad_calculada_por_producto = False
+    if selected_product_ids and marca and audiencia:
+        product_affinities_for_audience = []
+        for prod_id in selected_product_ids:
+            producto_encontrado = None
+            for p in marca.get("productos", []): # Productos are now dicts
+                if p["id"] == prod_id:
+                    producto_encontrado = p
+                    break
+
+            if producto_encontrado:
+                # Check 'afinidad_audiencia' within the product for the current audiencia_id
+                if audiencia_id in producto_encontrado.get("afinidad_audiencia", {}):
+                    product_affinities_for_audience.append(producto_encontrado["afinidad_audiencia"][audiencia_id])
+
+        if product_affinities_for_audience:
+            afinidad_marca_audiencia = sum(product_affinities_for_audience) / len(product_affinities_for_audience)
+            afinidad_calculada_por_producto = True
+            mensajes_feedback.append(f"INFO: Afinidad calculada ({afinidad_marca_audiencia:.2f}) basada en el promedio de {len(product_affinities_for_audience)} producto(s) seleccionados.")
+        else:
+            mensajes_feedback.append("INFO: No se encontraron afinidades específicas para los productos seleccionados y la audiencia. Usando afinidad de marca-categoría.")
+
+    if not afinidad_calculada_por_producto:
+        # Fallback to brand-category affinity if not calculated by product
+        afinidad_marca_audiencia = audiencia["afinidad_marca_categoria"].get(marca["categoria"], 0.05) if audiencia and marca else 0.05
+        if audiencia and marca: # Add feedback only if data was present for calculation
+             mensajes_feedback.append(f"INFO: Afinidad calculada ({afinidad_marca_audiencia:.2f}) basada en la categoría de la marca '{marca['categoria']}'.")
+
 
     if afinidad_marca_audiencia >= 0.7: puntuacion_actual += BONUS_BUEN_TARGETING
     elif afinidad_marca_audiencia >= 0.4: puntuacion_actual += (BONUS_BUEN_TARGETING / 2)
@@ -417,24 +445,42 @@ if __name__ == '__main__':
     presupuesto_muy_bajo = 30000; presupuesto_bajo = 100000; presupuesto_medio = 500000; presupuesto_alto = 2000000
 
     print(f"\n--- ESCENARIO DEBUG: IDEAL Retail a Familias ---")
-    resultado_ideal = simular_campana(marca_retail_id, aud_familias_id, presupuesto_alto, intereses_familia_relevantes, "traffic")
+    # Example call with product_ids (assuming prod_006_01 and prod_006_03 are relevant for aud_familias_id)
+    # For this test to be meaningful, market_data.py should have these products for marca_006 and relevant affinities for aud_004
+    # e.g., prod_006_01: {"aud_004": 0.8}, prod_006_03: {} (no specific affinity or not for aud_004)
+    # Let's assume prod_006_01 ("Mercado Básico") for Éxito has high affinity for aud_004 ("Familias Consolidadas")
+    # And prod_006_02 ("Electrodomésticos") also has good affinity.
+    # We would need to update market_data.py for these specific affinities for a full test.
+    # For now, this call demonstrates the new parameter.
+    selected_products_exito_familias = ["prod_006_01", "prod_006_02"] # Example product IDs
+    resultado_ideal = simular_campana(marca_retail_id, aud_familias_id, presupuesto_alto, intereses_familia_relevantes, "traffic", selected_product_ids=selected_products_exito_familias)
     print(f"  PUNTUACIÓN FINAL: {resultado_ideal['puntuacion']}")
-    print(f"  Afinidad Marca-Audiencia: {resultado_ideal['afinidad_marca_audiencia']:.2%}, Match Intereses: {resultado_ideal['interest_match_score']:.2%}")
+    print(f"  Afinidad Marca-Audiencia: {resultado_ideal['afinidad_marca_audiencia']:.2%} (Puede ser de producto o categoría), Match Intereses: {resultado_ideal['interest_match_score']:.2%}")
     print(f"  Impresiones: {resultado_ideal['impresiones']:,}, Clics: {resultado_ideal['clics']:,}, CTR: {resultado_ideal['ctr_calculado']:.3%}")
     print(f"  Mensajes de Feedback:")
     for msg in resultado_ideal.get("mensajes_feedback", []): print(f"    - {msg}")
 
-    print(f"\n--- ESCENARIO DEBUG: POOR AFFINITY (Tech on Familias) ---")
-    resultado_poor_affinity = simular_campana(marca_tech_id, aud_familias_id, presupuesto_medio, intereses_familia_relevantes, "traffic")
+    print(f"\n--- ESCENARIO DEBUG: POOR AFFINITY (Tech on Familias, no specific product affinity expected) ---")
+    resultado_poor_affinity = simular_campana(marca_tech_id, aud_familias_id, presupuesto_medio, intereses_familia_relevantes, "traffic", selected_product_ids=["prod_012_01"]) # Rappi Prime for families
     print(f"  PUNTUACIÓN FINAL: {resultado_poor_affinity['puntuacion']}")
     print(f"  Afinidad Marca-Audiencia: {resultado_poor_affinity['afinidad_marca_audiencia']:.2%}, Match Intereses: {resultado_poor_affinity['interest_match_score']:.2%}")
     print(f"  Mensajes de Feedback:")
     for msg in resultado_poor_affinity.get("mensajes_feedback", []): print(f"    - {msg}")
 
-    print(f"\n--- ESCENARIO DEBUG: MISMATCHED GOAL (Banco a Jóvenes para Conversión) ---")
-    resultado_mismatched = simular_campana(marca_banco_id, aud_jovenes_id, presupuesto_medio, intereses_jovenes_relevantes, "conversion")
+    print(f"\n--- ESCENARIO DEBUG: MISMATCHED GOAL (Banco a Jóvenes para Conversión, with a product) ---")
+    # Assuming prod_001_01 (Cuenta de Ahorros) might have some affinity for aud_001 (Jóvenes)
+    selected_products_banco_jovenes = ["prod_001_01"]
+    resultado_mismatched = simular_campana(marca_banco_id, aud_jovenes_id, presupuesto_medio, intereses_jovenes_relevantes, "conversion", selected_product_ids=selected_products_banco_jovenes)
     print(f"  PUNTUACIÓN FINAL: {resultado_mismatched['puntuacion']}")
     print(f"  Afinidad Marca-Audiencia: {resultado_mismatched['afinidad_marca_audiencia']:.2%}, Match Intereses: {resultado_mismatched['interest_match_score']:.2%}")
     print(f"  Conversiones: {resultado_mismatched['conversiones_calculadas']}")
     print(f"  Mensajes de Feedback:")
     for msg in resultado_mismatched.get("mensajes_feedback", []): print(f"    - {msg}")
+
+    print(f"\n--- ESCENARIO DEBUG: Banco a Jóvenes para Conversión, NO productos seleccionados ---")
+    resultado_mismatched_no_prod = simular_campana(marca_banco_id, aud_jovenes_id, presupuesto_medio, intereses_jovenes_relevantes, "conversion")
+    print(f"  PUNTUACIÓN FINAL: {resultado_mismatched_no_prod['puntuacion']}")
+    print(f"  Afinidad Marca-Audiencia (Categoría): {resultado_mismatched_no_prod['afinidad_marca_audiencia']:.2%}, Match Intereses: {resultado_mismatched_no_prod['interest_match_score']:.2%}")
+    print(f"  Conversiones: {resultado_mismatched_no_prod['conversiones_calculadas']}")
+    print(f"  Mensajes de Feedback:")
+    for msg in resultado_mismatched_no_prod.get("mensajes_feedback", []): print(f"    - {msg}")

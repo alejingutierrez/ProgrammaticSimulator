@@ -4,19 +4,24 @@ document.addEventListener('DOMContentLoaded', () => {
     const campaignForm = document.getElementById('campaignForm');
     const marcaSelect = document.getElementById('marca');
     const audienciaSelect = document.getElementById('audiencia');
-    const interesesSelect = document.getElementById('intereses');
+    // const interesesSelect = document.getElementById('intereses'); // Replaced by interesesCheckboxContainer
+    const interesesCheckboxContainer = document.getElementById('interesesCheckboxContainer'); // New reference for checkboxes
     const campaignGoalSelect = document.getElementById('campaignGoal'); // Nueva referencia
+    const productSelectionContainer = document.getElementById('productSelectionContainer'); // New reference
+    const productosSelect = document.getElementById('productos'); // New reference
     const resultsContainer = document.getElementById('resultsContainer');
     const estimatedAudienceDisplay = document.getElementById('estimatedAudienceDisplay'); // Nueva referencia
     const audienceDescriptionDisplay = document.getElementById('audienceDescriptionDisplay'); // Referencia para descripción
 
     let allAudiencesData = []; // Variable para almacenar datos de audiencias
+    let allBrandsData = []; // Variable para almacenar datos de marcas con sus productos
 
     // Actualizado para coincidir con los nuevos campos en index.html
     const originalResultsHTML = `
             <h2>Resultados de la Simulación</h2>
             <p><strong>Marca:</strong> <span id="resMarca"></span></p>
             <p><strong>Audiencia:</strong> <span id="resAudiencia"></span></p>
+            <p><strong>Productos Seleccionados:</strong> <span id="resProductosSeleccionados"></span></p>
             <p><strong>Objetivo de Campaña:</strong> <span id="resCampaignGoal"></span></p>
             <p><strong>Presupuesto Inicial (COP):</strong> <span id="resPresupuestoInicial"></span></p>
             <hr>
@@ -49,36 +54,56 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!isMultiple) {
             selectElement.innerHTML = `<option value="">${defaultOptionText}</option>`; // Limpiar y poner placeholder
         } else {
-            selectElement.innerHTML = `<option value="" disabled>${defaultOptionText}</option>`; // Para selectores múltiples, el placeholder puede ser solo informativo
+            // This 'else' block might not be strictly necessary if no multi-selects are left after this change
+            selectElement.innerHTML = `<option value="" disabled>${defaultOptionText}</option>`;
         }
         data.forEach(item => {
             const option = document.createElement('option');
             option.value = item.id;
-            // Para intereses, podríamos querer mostrar la categoría también, o un nombre más descriptivo.
-            // Por ahora, solo el nombre.
             option.textContent = item.nombre + (item.categoria_interes ? ` (${item.categoria_interes})` : "");
             selectElement.appendChild(option);
         });
     }
 
     async function cargarIntereses() {
+        interesesCheckboxContainer.innerHTML = '<p>Cargando intereses...</p>'; // Show loading message
         try {
             const response = await fetch('http://localhost:5001/api/interests-data');
             if (!response.ok) {
                 throw new Error(`Error al cargar intereses: ${response.status}`);
             }
             const intereses = await response.json();
-            // Usar la función cargarSelect, adaptada o una nueva si es necesario para 'multiple'
-            // Aquí reutilizamos cargarSelect, el placeholder "Cargando intereses..." se reemplazará.
-            // El tercer argumento es el texto para la opción deshabilitada si el select está vacío al inicio.
-            cargarSelect(interesesSelect, intereses, "Cargando intereses...", true);
-            // Habilitar el select si antes estaba deshabilitado por no tener opciones.
-            interesesSelect.querySelector('option[disabled]').textContent = 'Selecciona uno o más intereses (opcional)';
+            interesesCheckboxContainer.innerHTML = ''; // Clear loading message
+
+            if (!intereses || intereses.length === 0) {
+                interesesCheckboxContainer.innerHTML = '<p>No hay intereses disponibles.</p>';
+                return;
+            }
+
+            intereses.forEach(interes => {
+                const itemDiv = document.createElement('div');
+                itemDiv.classList.add('checkbox-item');
+
+                const checkbox = document.createElement('input');
+                checkbox.type = 'checkbox';
+                checkbox.id = `interes-${interes.id}`;
+                checkbox.value = interes.id;
+                checkbox.name = 'interes_selection';
+                // Add event listener to each checkbox for updating audience estimate
+                checkbox.addEventListener('change', updateEstimatedAudienceSize);
+
+
+                const label = document.createElement('label');
+                label.htmlFor = `interes-${interes.id}`;
+                label.textContent = interes.nombre + (interes.categoria_interes ? ` (${interes.categoria_interes})` : "");
+
+                itemDiv.appendChild(checkbox);
+                itemDiv.appendChild(label);
+                interesesCheckboxContainer.appendChild(itemDiv);
+            });
         } catch (error) {
             console.error('Error al cargar intereses:', error);
-            interesesSelect.innerHTML = '<option value="">Error al cargar intereses</option>';
-            // Opcional: alertar al usuario
-            // alert("No se pudieron cargar los intereses desde el servidor.\n" + error.message);
+            interesesCheckboxContainer.innerHTML = '<p>Error al cargar intereses. Intenta recargar.</p>';
         }
     }
 
@@ -91,7 +116,10 @@ document.addEventListener('DOMContentLoaded', () => {
         const campaignGoalId = campaignGoalSelect.value; // Obtener el objetivo seleccionado
         const presupuesto = document.getElementById('presupuesto').value;
 
-        const selectedInteresIds = Array.from(interesesSelect.options)
+        const selectedInteresCheckboxes = document.querySelectorAll('#interesesCheckboxContainer input[type="checkbox"]:checked');
+        const selectedInteresIds = Array.from(selectedInteresCheckboxes).map(cb => cb.value);
+
+        const selectedProductIds = Array.from(productosSelect.options)
             .filter(option => option.selected && option.value !== "")
             .map(option => option.value);
 
@@ -116,7 +144,8 @@ document.addEventListener('DOMContentLoaded', () => {
                     audienciaId: audienciaId,
                     presupuesto: presupuesto,
                     selectedInteresIds: selectedInteresIds,
-                    campaignGoalId: campaignGoalId // Enviar el objetivo de campaña
+                    campaignGoalId: campaignGoalId, // Enviar el objetivo de campaña
+                    selected_product_ids: selectedProductIds // Enviar productos seleccionados
                 }),
             });
 
@@ -142,8 +171,12 @@ document.addEventListener('DOMContentLoaded', () => {
                 throw new Error(`Error al cargar datos de mercado: ${response.status}`);
             }
             const data = await response.json();
-            cargarSelect(marcaSelect, data.marcas, "Selecciona una marca");
-            cargarSelect(audienciaSelect, data.audiencias, "Selecciona una audiencia");
+
+            allBrandsData = data.marcas || []; // Guardar todas las marcas con sus productos
+            allAudiencesData = data.audiencias || []; // Guardar datos de audiencias (ya estaba)
+
+            cargarSelect(marcaSelect, allBrandsData, "Selecciona una marca");
+            cargarSelect(audienciaSelect, allAudiencesData, "Selecciona una audiencia");
             if (data.campaign_goals) { // Cargar objetivos de campaña
                 cargarSelect(campaignGoalSelect, data.campaign_goals, "Selecciona un objetivo");
             } else {
@@ -166,6 +199,27 @@ document.addEventListener('DOMContentLoaded', () => {
         } else {
             document.getElementById('resMarca').textContent = data.marca_nombre || 'N/A';
             document.getElementById('resAudiencia').textContent = data.audiencia_nombre || 'N/A';
+
+            // Mostrar productos seleccionados
+            const resProductosSeleccionadosSpan = document.getElementById('resProductosSeleccionados');
+            const formSelectedProductIds = Array.from(productosSelect.options)
+                                           .filter(option => option.selected && option.value !== "")
+                                           .map(option => option.value);
+            if (formSelectedProductIds.length > 0 && allBrandsData.length > 0) {
+                const selectedBrand = allBrandsData.find(brand => brand.id === marcaSelect.value);
+                if (selectedBrand && selectedBrand.productos) {
+                    const productNames = formSelectedProductIds.map(pId => {
+                        const product = selectedBrand.productos.find(prod => prod.id === pId);
+                        return product ? product.nombre : pId;
+                    });
+                    resProductosSeleccionadosSpan.textContent = productNames.join(', ');
+                } else {
+                    resProductosSeleccionadosSpan.textContent = formSelectedProductIds.join(', '); // Fallback a IDs si no se encuentran nombres
+                }
+            } else {
+                resProductosSeleccionadosSpan.textContent = 'Ninguno';
+            }
+
             document.getElementById('resCampaignGoal').textContent = data.campaign_goal_nombre || 'N/A';
             document.getElementById('resPresupuestoInicial').textContent = data.presupuesto_inicial?.toLocaleString('es-CO', { style: 'currency', currency: 'COP' }) || 'N/A';
             document.getElementById('resPuntuacion').textContent = data.puntuacion !== undefined ? data.puntuacion : 'N/A';
@@ -213,8 +267,9 @@ document.addEventListener('DOMContentLoaded', () => {
     // Función para actualizar el tamaño estimado de la audiencia
     async function updateEstimatedAudienceSize() {
         const audienciaId = audienciaSelect.value;
-        const selectedInteresOptions = Array.from(interesesSelect.selectedOptions);
-        const selectedInteresIds = selectedInteresOptions.map(option => option.value).filter(value => value !== "");
+
+        const selectedInteresCheckboxes = document.querySelectorAll('#interesesCheckboxContainer input[type="checkbox"]:checked');
+        const selectedInteresIds = Array.from(selectedInteresCheckboxes).map(cb => cb.value);
 
         if (!audienciaId) {
             estimatedAudienceDisplay.textContent = "Select an audience";
@@ -282,7 +337,46 @@ document.addEventListener('DOMContentLoaded', () => {
         updateEstimatedAudienceSize();
         updateAudienceDescription(); // Añadir llamada para actualizar descripción
     });
-    interesesSelect.addEventListener('change', updateEstimatedAudienceSize); // Intereses solo afectan la estimación
+    // interesesSelect.addEventListener('change', updateEstimatedAudienceSize); // Removed, individual checkboxes have listeners now
+
+    marcaSelect.addEventListener('change', () => {
+        const selectedBrandId = marcaSelect.value;
+        productosSelect.innerHTML = ''; // Clear previous product options
+
+        if (selectedBrandId && allBrandsData.length > 0) {
+            const brand = allBrandsData.find(b => b.id === selectedBrandId);
+            if (brand && brand.productos && brand.productos.length > 0) {
+                productSelectionContainer.style.display = 'block'; // Or 'flex' if using flexbox for layout
+                const placeholderOption = document.createElement('option');
+                placeholderOption.value = "";
+                placeholderOption.textContent = "Selecciona uno o más productos";
+                placeholderOption.disabled = true; // Keep it disabled as it's a placeholder
+                productosSelect.appendChild(placeholderOption);
+
+                brand.productos.forEach(producto => {
+                    const option = document.createElement('option');
+                    option.value = producto.id;
+                    option.textContent = producto.nombre;
+                    productosSelect.appendChild(option);
+                });
+            } else {
+                const noProductsOption = document.createElement('option');
+                noProductsOption.value = "";
+                noProductsOption.textContent = "No hay productos para esta marca";
+                noProductsOption.disabled = true;
+                productosSelect.appendChild(noProductsOption);
+                productSelectionContainer.style.display = 'block'; // Still show, but with "no products"
+            }
+        } else {
+            const defaultOption = document.createElement('option');
+            defaultOption.value = "";
+            defaultOption.textContent = "Selecciona una marca primero...";
+            defaultOption.disabled = true;
+            productosSelect.appendChild(defaultOption);
+            productSelectionContainer.style.display = 'none';
+        }
+    });
+
 
     // cargarDatosIniciales unificada y correcta
     async function cargarDatosIniciales() {
@@ -293,9 +387,10 @@ document.addEventListener('DOMContentLoaded', () => {
             }
             const data = await response.json();
 
+            allBrandsData = data.marcas || []; // Guardar todas las marcas con sus productos
             allAudiencesData = data.audiencias || []; // Guardar datos de audiencias
 
-            cargarSelect(marcaSelect, data.marcas, "Selecciona una marca");
+            cargarSelect(marcaSelect, allBrandsData, "Selecciona una marca");
             // Usar allAudiencesData para poblar el select, ya que contiene la info completa
             cargarSelect(audienciaSelect, allAudiencesData, "Selecciona una audiencia");
 
@@ -307,12 +402,15 @@ document.addEventListener('DOMContentLoaded', () => {
             // Llamadas iniciales después de cargar los datos y selectores
             updateAudienceDescription();
             updateEstimatedAudienceSize();
+            // Trigger change on marcaSelect to potentially populate products if a brand is pre-selected (or to set initial state)
+            marcaSelect.dispatchEvent(new Event('change'));
         } catch (error) {
             console.error('Error al cargar datos iniciales:', error);
             marcaSelect.innerHTML = '<option value="">Error al cargar marcas</option>';
             audienciaSelect.innerHTML = '<option value="">Error al cargar audiencias</option>';
             campaignGoalSelect.innerHTML = '<option value="">Error al cargar objetivos</option>';
             if(audienceDescriptionDisplay) audienceDescriptionDisplay.textContent = "Error al cargar datos de audiencias.";
+            productSelectionContainer.style.display = 'none';
             alert("No se pudieron cargar todos los datos iniciales desde el servidor. Verifica que el backend esté funcionando.\n" + error.message);
         }
     }

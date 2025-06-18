@@ -33,11 +33,18 @@
                 </div>
             </div>
 
-            <div class="form-group">
-                <label for="intereses">Selecciona Intereses (opcional):</label>
-                <select id="intereses" name="intereses" multiple>
-                    <option value="" disabled>Cargando intereses...</option>
+            <div class="form-group" id="productSelectionContainer" style="display:none;">
+                <label for="productos">Selecciona Productos (opcional):</label>
+                <select id="productos" name="productos" multiple>
+                    <option value="" disabled>Selecciona una marca primero...</option>
                 </select>
+            </div>
+
+            <div class="form-group">
+                <label for="interesesCheckboxContainer">Selecciona Intereses (opcional):</label>
+                <div id="interesesCheckboxContainer" class="checkbox-container">
+                    <!-- Checkboxes will be populated here by JavaScript -->
+                </div>
             </div>
 
             <div class="form-group">
@@ -59,6 +66,7 @@
             <h2>Resultados de la Simulación</h2>
             <p><strong>Marca:</strong> <span id="resMarca"></span></p>
             <p><strong>Audiencia:</strong> <span id="resAudiencia"></span></p>
+            <p><strong>Productos Seleccionados:</strong> <span id="resProductosSeleccionados"></span></p>
             <p><strong>Objetivo de Campaña:</strong> <span id="resCampaignGoal"></span></p>
             <p><strong>Presupuesto Inicial (COP):</strong> <span id="resPresupuestoInicial"></span></p>
             <hr>

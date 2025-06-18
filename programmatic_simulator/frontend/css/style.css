@@ -52,6 +52,32 @@ h2 {
     box-sizing: border-box; /* Para que padding no afecte el width total */
 }
 
+/* Styling for the new checkbox container */
+.checkbox-container {
+    max-height: 150px; /* Or your desired height */
+    overflow-y: auto;
+    border: 1px solid #ccc;
+    padding: 10px; /* Increased padding a bit */
+    border-radius: 4px; /* Added border-radius for consistency */
+    background-color: #fff; /* Ensure background is white */
+}
+
+.checkbox-item {
+    display: block; /* Makes each checkbox appear on a new line */
+    margin-bottom: 5px; /* Space between items */
+}
+
+.checkbox-item input[type="checkbox"] {
+    margin-right: 8px; /* Space between checkbox and label */
+    vertical-align: middle; /* Align checkbox with text */
+}
+
+.checkbox-item label {
+    font-weight: normal; /* Labels inside checkbox container might not need to be bold */
+    vertical-align: middle;
+}
+
+
 button[type="submit"] {
     background-color: #007bff;
     color: white;
@@ -119,13 +145,25 @@ select option[value=""] {
 
 #audienceDescriptionContainer {
     margin-top: 5px;
-    padding: 8px;
-    background-color: #e9ecef; /* A light grey background */
-    border-radius: 4px;
-    font-size: 0.9em;
-    color: #495057; /* Darker grey text */
+    /* Padding moved to .audience-description-text for better scrollbar behavior */
+    /* background-color: #e9ecef; */ /* Will be overridden by .audience-description-text's background */
+    border-radius: 4px; /* Keep this for the container's rounding */
+    /* font-size: 0.9em; */ /* Will be set on .audience-description-text */
+    /* color: #495057; */ /* Will be set on .audience-description-text */
 }
 
 .audience-description-text {
-    margin: 0;
+    background-color: #f9f9f9; /* Light background for the text area */
+    border: 1px solid #e0e0e0; /* Subtle border */
+    border-radius: 4px;       /* Match container's rounding or can be independent */
+    padding: 8px;             /* Padding inside the description box */
+    margin: 0;                /* Reset margin for the paragraph itself */
+    min-height: 40px;         /* Minimum height for 1-2 lines */
+    max-height: 120px;        /* Maximum height before scrolling */
+    overflow-y: auto;         /* Enable vertical scroll if content exceeds max-height */
+    word-wrap: break-word;    /* Ensure long words break */
+    overflow-wrap: break-word; /* Standard property for word breaking */
+    line-height: 1.5;         /* Improve readability */
+    font-size: 0.9em;         /* Slightly smaller font for descriptions */
+    color: #333;              /* Default text color for description */
 }
