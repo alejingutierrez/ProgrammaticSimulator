@@ -6,6 +6,23 @@ document.addEventListener('DOMContentLoaded', () => {
     const audienciaSelect = document.getElementById('audiencia');
     const resultsContainer = document.getElementById('resultsContainer');
 
+    const originalResultsHTML = `
+            <h2>Resultados de la Simulación</h2>
+            <p><strong>Marca:</strong> <span id="resMarca"></span></p>
+            <p><strong>Audiencia:</strong> <span id="resAudiencia"></span></p>
+            <p><strong>Presupuesto Inicial (COP):</strong> <span id="resPresupuestoInicial"></span></p>
+            <hr>
+            <p class="score"><strong>Puntuación de la Campaña:</strong> <span id="resPuntuacion"></span> / 10</p>
+            <hr>
+            <p><strong>Impresiones Estimadas:</strong> <span id="resImpresiones"></span></p>
+            <p><strong>Clics Estimados:</strong> <span id="resClics"></span></p>
+            <p><strong>CPM Calculado (COP):</strong> <span id="resCPM"></span></p>
+            <p><strong>CPC Calculado (COP):</strong> <span id="resCPC"></span></p>
+            <p><strong>Presupuesto Gastado (COP):</strong> <span id="resPresupuestoGastado"></span></p>
+            <hr>
+            <p><em><span id="resMensaje"></span></em></p>
+    `;
+
     function cargarSelect(selectElement, data, defaultOptionText) {
         selectElement.innerHTML = `<option value="">${defaultOptionText}</option>`; // Limpiar y poner placeholder
         data.forEach(item => {
@@ -82,11 +99,11 @@ document.addEventListener('DOMContentLoaded', () => {
     function displayResults(data) {
         if (data.error) {
             resultsContainer.innerHTML = `<p style="color:red;">Error: ${data.error}</p>`;
-            resultsContainer.style.display = 'block';
-            return;
-        }
+        } else {
+            // Restaurar la estructura original antes de poblar
+            resultsContainer.innerHTML = originalResultsHTML;
 
-        document.getElementById('resMarca').textContent = data.marca_nombre;
+            document.getElementById('resMarca').textContent = data.marca_nombre;
         document.getElementById('resAudiencia').textContent = data.audiencia_nombre;
         document.getElementById('resPresupuestoInicial').textContent = data.presupuesto_inicial?.toLocaleString('es-CO', { style: 'currency', currency: 'COP' }) || 'N/A';
         document.getElementById('resPuntuacion').textContent = data.puntuacion;
@@ -96,7 +113,7 @@ document.addEventListener('DOMContentLoaded', () => {
         document.getElementById('resCPC').textContent = data.cpc_calculado?.toLocaleString('es-CO', { style: 'currency', currency: 'COP', minimumFractionDigits: 0 }) || 'N/A';
         document.getElementById('resPresupuestoGastado').textContent = data.presupuesto_gastado?.toLocaleString('es-CO', { style: 'currency', currency: 'COP' }) || 'N/A';
         document.getElementById('resMensaje').textContent = data.mensaje;
-
+        }
         resultsContainer.style.display = 'block';
     }
 
