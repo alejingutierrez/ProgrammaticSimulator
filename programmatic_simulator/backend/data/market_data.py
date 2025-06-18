@@ -1,79 +1,209 @@
 # programmatic_simulator/backend/data/market_data.py
 
 MARCAS_COLOMBIANAS = [
-    {"id": "marca_001", "nombre": "Bancolombia", "categoria": "Finanzas"},
+    {"id": "marca_001", "nombre": "Bancolombia", "categoria": "Banca"},
     {"id": "marca_002", "nombre": "Ecopetrol", "categoria": "Energía"},
-    {"id": "marca_003", "nombre": "Alpina", "categoria": "Alimentos y Bebidas"},
-    {"id": "marca_004", "nombre": "Avianca", "categoria": "Transporte"},
-    {"id": "marca_005", "nombre": "Postobón", "categoria": "Alimentos y Bebidas"},
+    {"id": "marca_003", "nombre": "Alpina", "categoria": "CPG"},
+    {"id": "marca_004", "nombre": "Avianca", "categoria": "Airlines"},
+    {"id": "marca_005", "nombre": "Postobón", "categoria": "CPG"},
+    {"id": "marca_006", "nombre": "Éxito", "categoria": "Retail"},
+    {"id": "marca_007", "nombre": "Claro", "categoria": "Telecom"},
+    {"id": "marca_008", "nombre": "Davivienda", "categoria": "Banca"},
+    {"id": "marca_009", "nombre": "Nutresa", "categoria": "CPG"},
+    {"id": "marca_010", "nombre": "LATAM Airlines", "categoria": "Airlines"},
+    {"id": "marca_011", "nombre": "Movistar", "categoria": "Telecom"},
+    {"id": "marca_012", "nombre": "Rappi", "categoria": "Tech"},
+    {"id": "marca_013", "nombre": "Mercado Libre", "categoria": "Tech"},
+    {"id": "marca_014", "nombre": "Cementos Argos", "categoria": "Construcción"},
+    {"id": "marca_015", "nombre": "Terpel", "categoria": "Energía"},
+    {"id": "marca_016", "nombre": "Falabella", "categoria": "Retail"},
+    {"id": "marca_017", "nombre": "Tigo", "categoria": "Telecom"},
+    {"id": "marca_018", "nombre": "Grupo Aval", "categoria": "Banca"},
+    {"id": "marca_019", "nombre": "Bavaria", "categoria": "CPG"},
+    {"id": "marca_020", "nombre": "Wingo", "categoria": "Airlines"}
 ]
 
 AUDIENCIAS_COLOMBIANAS = [
     {
         "id": "aud_001",
         "nombre": "Jóvenes Universitarios (18-24)",
-        "descripcion": "Estudiantes de pregrado interesados en tecnología, entretenimiento y viajes.",
-        "intereses_clave": ["tecnologia", "videojuegos", "musica", "viajes", "redes_sociales"],
-        "afinidad_marca_categoria": { # Afinidad base de esta audiencia con categorías de marcas (0-1)
-            "Finanzas": 0.3,
-            "Energía": 0.1,
-            "Alimentos y Bebidas": 0.7,
-            "Transporte": 0.6,
-            "Tecnología": 0.8
+        "descripcion": "Estudiantes de pregrado activos en redes sociales, interesados en tecnología emergente, entretenimiento digital, moda accesible y viajes económicos.",
+        "intereses_clave": ["tecnologia_emergente", "videojuegos_online", "musica_streaming", "viajes_mochilero", "redes_sociales_tendencias", "moda_rapida", "eventos_universitarios"],
+        "afinidad_marca_categoria": {
+            "Banca": 0.4, "Energía": 0.1, "CPG": 0.7, "Airlines": 0.6, "Retail": 0.6, "Telecom": 0.8, "Tech": 0.9, "Construcción": 0.05
         }
     },
     {
         "id": "aud_002",
         "nombre": "Profesionales Jóvenes (25-34)",
-        "descripcion": "Profesionales iniciando su carrera, interesados en desarrollo profesional, finanzas personales y estilo de vida.",
-        "intereses_clave": ["desarrollo_profesional", "inversiones", "viajes_negocios", "restaurantes", "fitness"],
+        "descripcion": "Profesionales en crecimiento, enfocados en desarrollo de carrera, finanzas personales, bienestar, y experiencias como cenas y viajes.",
+        "intereses_clave": ["desarrollo_profesional_liderazgo", "inversiones_cripto", "viajes_experiencias", "restaurantes_gourmet", "fitness_wellness", "networking", "educacion_continua"],
         "afinidad_marca_categoria": {
-            "Finanzas": 0.7,
-            "Energía": 0.2,
-            "Alimentos y Bebidas": 0.5,
-            "Transporte": 0.5,
-            "Tecnología": 0.6
+            "Banca": 0.7, "Energía": 0.2, "CPG": 0.5, "Airlines": 0.7, "Retail": 0.5, "Telecom": 0.6, "Tech": 0.7, "Construcción": 0.1
         }
     },
     {
         "id": "aud_003",
-        "nombre": "Amantes de la Tecnología (20-45)",
-        "descripcion": "Personas con alto interés en gadgets, software y nuevas tecnologías.",
-        "intereses_clave": ["gadgets", "software", "ia", "videojuegos_pc", "ecommerce_tecnologia"],
+        "nombre": "Entusiastas de la Tecnología (20-45)",
+        "descripcion": "Individuos apasionados por los últimos gadgets, software, inteligencia artificial y el ecosistema de startups tecnológicas.",
+        "intereses_clave": ["gadgets_innovadores", "software_productividad", "inteligencia_artificial_aplicada", "videojuegos_consola_pc", "ecommerce_tecnologia_especializada", "realidad_virtual_aumentada", "domotica"],
         "afinidad_marca_categoria": {
-            "Finanzas": 0.4,
-            "Energía": 0.3,
-            "Alimentos y Bebidas": 0.2,
-            "Transporte": 0.3,
-            "Tecnología": 0.9 # Afinidad alta con marcas de tecnología, que no están en la lista de marcas aún
+            "Banca": 0.4, "Energía": 0.3, "CPG": 0.2, "Airlines": 0.3, "Retail": 0.4, "Telecom": 0.7, "Tech": 0.95, "Construcción": 0.1
         }
     },
     {
         "id": "aud_004",
-        "nombre": "Familias con Hijos Pequeños (30-45)",
-        "descripcion": "Padres de familia interesados en productos y servicios para niños, hogar y entretenimiento familiar.",
-        "intereses_clave": ["productos_infantiles", "educacion", "viajes_familiares", "seguros_hogar", "alimentacion_saludable"],
+        "nombre": "Familias Consolidadas (35-55)",
+        "descripcion": "Padres de familia con hijos en edad escolar o adolescente, interesados en productos para el hogar, educación, salud familiar, vehículos y planificación financiera a largo plazo.",
+        "intereses_clave": ["productos_hogar_familia", "educacion_hijos_universitaria", "viajes_familiares_vacaciones", "seguros_vida_salud", "alimentacion_organica", "vehiculos_familiares_suv", "mejoras_hogar"], # "universidad" changed to "universitaria"
         "afinidad_marca_categoria": {
-            "Finanzas": 0.6, # Seguros, créditos educativos
-            "Energía": 0.1,
-            "Alimentos y Bebidas": 0.8,
-            "Transporte": 0.4, # Vehículos familiares, viajes
-            "Tecnología": 0.4
+            "Banca": 0.8, "Energía": 0.2, "CPG": 0.8, "Airlines": 0.5, "Retail": 0.7, "Telecom": 0.5, "Tech": 0.4, "Construcción": 0.3
         }
     },
     {
         "id": "aud_005",
         "nombre": "Adultos Mayores Activos (60+)",
-        "descripcion": "Personas jubiladas o cerca de la jubilación, interesadas en salud, viajes de placer y finanzas para el retiro.",
-        "intereses_clave": ["salud_bienestar", "viajes_culturales", "seguros_medicos", "inversiones_retiro", "hobbies"],
+        "descripcion": "Personas jubiladas o próximas a jubilarse, enfocadas en salud, bienestar, viajes culturales, hobbies y gestión de patrimonio.",
+        "intereses_clave": ["salud_preventiva_bienestar", "viajes_culturales_cruceros", "seguros_medicos_complementarios", "inversiones_conservadoras_retiro", "hobbies_manualidades_jardineria", "tecnologia_simplificada", "actividades_comunitarias"],
         "afinidad_marca_categoria": {
-            "Finanzas": 0.8,
-            "Energía": 0.1,
-            "Alimentos y Bebidas": 0.6,
-            "Transporte": 0.7,
-            "Tecnología": 0.2
+            "Banca": 0.8, "Energía": 0.1, "CPG": 0.6, "Airlines": 0.7, "Retail": 0.5, "Telecom": 0.3, "Tech": 0.2, "Construcción": 0.2
+        }
+    },
+    {
+        "id": "aud_006",
+        "nombre": "Emprendedores Digitales (28-45)",
+        "descripcion": "Fundadores y empleados de startups y negocios online, interesados en herramientas de marketing, productividad, SaaS y crecimiento empresarial.",
+        "intereses_clave": ["marketing_digital_seo_sem", "herramientas_saas", "productividad_gestion_proyectos", "ecommerce_plataformas", "inversion_semilla_escalamiento", "eventos_networking_emprendimiento", "tecnologia_nube"],
+        "afinidad_marca_categoria": {
+            "Banca": 0.6, "Energía": 0.1, "CPG": 0.3, "Airlines": 0.4, "Retail": 0.3, "Telecom": 0.8, "Tech": 0.9, "Construcción": 0.1
+        }
+    },
+    {
+        "id": "aud_007",
+        "nombre": "Amantes del Lujo (30-55)",
+        "descripcion": "Individuos con alto poder adquisitivo, interesados en marcas premium, experiencias exclusivas, viajes de lujo y artículos de alta gama.",
+        "intereses_clave": ["marcas_lujo_moda_joyeria", "experiencias_exclusivas_hoteles_boutique", "viajes_primera_clase_destinos_exoticos", "autos_deportivos_lujo", "arte_coleccionables", "gastronomia_michelin", "inversiones_alto_riesgo"],
+        "afinidad_marca_categoria": {
+            "Banca": 0.7, "Energía": 0.2, "CPG": 0.4, "Airlines": 0.8, "Retail": 0.6, "Telecom": 0.5, "Tech": 0.6, "Construcción": 0.3 # Podrían estar interesados en propiedades de lujo
+        }
+    },
+    {
+        "id": "aud_008",
+        "nombre": "Gamers Hardcore (16-30)",
+        "descripcion": "Jugadores dedicados que invierten tiempo y dinero en videojuegos, hardware especializado y competencias de eSports.",
+        "intereses_clave": ["videojuegos_aaa_competitivos", "hardware_gaming_pc_perifericos", "esports_torneos_equipos", "streaming_videojuegos_twitch_youtube", "comunidades_gaming_discord", "realidad_virtual_gaming", "bebidas_energeticas_snacks_gaming"],
+        "afinidad_marca_categoria": {
+            "Banca": 0.2, "Energía": 0.1, "CPG": 0.6, "Airlines": 0.2, "Retail": 0.4, "Telecom": 0.8, "Tech": 0.9, "Construcción": 0.05
+        }
+    },
+    {
+        "id": "aud_009",
+        "nombre": "Viajeros Frecuentes por Negocios (35-55)",
+        "descripcion": "Profesionales que viajan constantemente por trabajo, valoran la eficiencia, comodidad y programas de lealtad.",
+        "intereses_clave": ["programas_lealtad_aerolineas_hoteles", "viajes_negocios_eficientes", "hoteles_ejecutivos", "alquiler_autos_corporativo", "equipaje_funcional", "apps_viajes_productividad", "salas_vip_aeropuertos"],
+        "afinidad_marca_categoria": {
+            "Banca": 0.7, "Energía": 0.1, "CPG": 0.3, "Airlines": 0.9, "Retail": 0.4, "Telecom": 0.6, "Tech": 0.5, "Construcción": 0.1
+        }
+    },
+    {
+        "id": "aud_010",
+        "nombre": "Conscientes del Medio Ambiente (25-50)",
+        "descripcion": "Personas preocupadas por la sostenibilidad, productos ecológicos, energías renovables y prácticas de consumo responsable.",
+        "intereses_clave": ["sostenibilidad_productos_eco", "energias_renovables_hogar", "consumo_responsable_local", "transporte_sostenible_bicicleta_electrico", "moda_etica", "reciclaje_zero_waste", "activismo_ambiental"],
+        "afinidad_marca_categoria": {
+            "Banca": 0.5, # Inversiones éticas
+            "Energía": 0.8, # Interés en empresas con prácticas sostenibles
+            "CPG": 0.7, # Productos orgánicos, empaques sostenibles
+            "Airlines": 0.3, # Críticos con la huella de carbono, pero pueden viajar
+            "Retail": 0.6, # Marcas con políticas de sostenibilidad
+            "Telecom": 0.4,
+            "Tech": 0.5, # Tecnología para eficiencia energética
+            "Construcción": 0.4 # Construcciones sostenibles
+        }
+    },
+    {
+        "id": "aud_011",
+        "nombre": "Amantes de la Cocina y Gastronomía (28-55)",
+        "descripcion": "Aficionados a cocinar, probar nuevas recetas, ingredientes de calidad y explorar la escena gastronómica.",
+        "intereses_clave": ["cocina_gourmet_casera", "recetas_internacionales_locales", "ingredientes_organicos_artesanales", "utensilios_cocina_profesionales", "vinos_maridajes", "restaurantes_criticas_blogs", "clases_cocina"],
+        "afinidad_marca_categoria": {
+            "Banca": 0.3, "Energía": 0.1, "CPG": 0.9, "Airlines": 0.4, "Retail": 0.7, "Telecom": 0.2, "Tech": 0.3, "Construcción": 0.1
+        }
+    },
+    {
+        "id": "aud_012",
+        "nombre": "Deportistas Aficionados (20-40)",
+        "descripcion": "Personas que practican deportes regularmente, interesados en ropa deportiva, equipamiento, nutrición y eventos deportivos.",
+        "intereses_clave": ["running_ciclismo_gimnasio", "ropa_deportiva_tecnica", "equipamiento_deportivo_especializado", "nutricion_deportiva_suplementos", "eventos_deportivos_maratones_carreras", "tecnologia_wearables_deporte", "prevencion_lesiones"],
+        "afinidad_marca_categoria": {
+            "Banca": 0.3, "Energía": 0.2, "CPG": 0.7, "Airlines": 0.4, "Retail": 0.6, "Telecom": 0.3, "Tech": 0.5, "Construcción": 0.1
+        }
+    },
+    {
+        "id": "aud_013",
+        "nombre": "Propietarios de Vivienda Recientes (30-45)",
+        "descripcion": "Individuos que han adquirido una propiedad recientemente, interesados en mejoras del hogar, muebles, decoración y servicios relacionados.",
+        "intereses_clave": ["mejoras_hogar_remodelacion", "muebles_decoracion_interiores", "electrodomesticos_eficientes", "jardineria_paisajismo", "seguros_hogar_hipotecas", "servicios_limpieza_mantenimiento", "comunidades_vecinos_propietarios"],
+        "afinidad_marca_categoria": {
+            "Banca": 0.8, "Energía": 0.3, "CPG": 0.5, "Airlines": 0.2, "Retail": 0.8, "Telecom": 0.4, "Tech": 0.4, "Construcción": 0.7
+        }
+    },
+    {
+        "id": "aud_014",
+        "nombre": "Estudiantes de Posgrado y MBA (26-35)",
+        "descripcion": "Individuos cursando estudios superiores, enfocados en networking, oportunidades laborales, herramientas de estudio y gestión del tiempo.",
+        "intereses_clave": ["networking_profesional_alumni", "oportunidades_laborales_ferias_empleo", "herramientas_colaboracion_online", "gestion_tiempo_productividad_personal", "finanzas_personales_estudiantes_posgrado", "viajes_academicos_conferencias", "software_analisis_datos"],
+        "afinidad_marca_categoria": {
+            "Banca": 0.7, "Energía": 0.1, "CPG": 0.4, "Airlines": 0.5, "Retail": 0.4, "Telecom": 0.6, "Tech": 0.8, "Construcción": 0.1
+        }
+    },
+    {
+        "id": "aud_015",
+        "nombre": "Artistas y Creativos (22-40)",
+        "descripcion": "Profesionales y aficionados al arte, diseño, música y otras disciplinas creativas, buscan inspiración y herramientas para su trabajo.",
+        "intereses_clave": ["software_diseño_edicion_video_audio", "materiales_arte_manualidades", "eventos_culturales_exposiciones_conciertos", "plataformas_venta_arte_online", "networking_comunidades_creativas", "inspiracion_viajes_naturaleza", "derechos_autor_propiedad_intelectual"],
+        "afinidad_marca_categoria": {
+            "Banca": 0.3, "Energía": 0.1, "CPG": 0.5, "Airlines": 0.4, "Retail": 0.5, "Telecom": 0.5, "Tech": 0.7, "Construcción": 0.1
         }
     }
+]
+
+INTERESES_DETALLADOS = [
+    {"id": "int_001", "nombre": "Tecnología Emergente", "categoria_interes": "Tecnología"},
+    {"id": "int_002", "nombre": "Videojuegos Online", "categoria_interes": "Entretenimiento"},
+    {"id": "int_003", "nombre": "Música en Streaming", "categoria_interes": "Entretenimiento"},
+    {"id": "int_004", "nombre": "Viajes de Mochilero", "categoria_interes": "Viajes"},
+    {"id": "int_005", "nombre": "Tendencias en Redes Sociales", "categoria_interes": "Tecnología"},
+    {"id": "int_006", "nombre": "Moda Rápida y Urbana", "categoria_interes": "Moda"},
+    {"id": "int_007", "nombre": "Eventos Universitarios y Festivales", "categoria_interes": "Entretenimiento"},
+    {"id": "int_008", "nombre": "Desarrollo Profesional y Liderazgo", "categoria_interes": "Carrera"},
+    {"id": "int_009", "nombre": "Inversiones y Criptomonedas", "categoria_interes": "Finanzas Personales"},
+    {"id": "int_010", "nombre": "Viajes de Experiencias Únicas", "categoria_interes": "Viajes"},
+    {"id": "int_011", "nombre": "Restaurantes Gourmet y Alta Cocina", "categoria_interes": "Gastronomía"},
+    {"id": "int_012", "nombre": "Fitness y Bienestar Holístico", "categoria_interes": "Salud y Bienestar"},
+    {"id": "int_013", "nombre": "Networking Estratégico", "categoria_interes": "Carrera"},
+    {"id": "int_014", "nombre": "Educación Continua y Masters", "categoria_interes": "Educación"},
+    {"id": "int_015", "nombre": "Gadgets Innovadores y Wearables", "categoria_interes": "Tecnología"},
+    {"id": "int_016", "nombre": "Software de Productividad y Colaboración", "categoria_interes": "Tecnología"},
+    {"id": "int_017", "nombre": "Inteligencia Artificial Aplicada", "categoria_interes": "Tecnología"},
+    {"id": "int_018", "nombre": "Videojuegos de Consola y PC", "categoria_interes": "Entretenimiento"},
+    {"id": "int_019", "nombre": "Ecommerce Especializado en Tecnología", "categoria_interes": "Compras Online"},
+    {"id": "int_020", "nombre": "Realidad Virtual y Aumentada", "categoria_interes": "Tecnología"},
+    {"id": "int_021", "nombre": "Domótica y Hogar Inteligente", "categoria_interes": "Tecnología"},
+    {"id": "int_022", "nombre": "Productos para el Hogar y Familia", "categoria_interes": "Hogar"},
+    {"id": "int_023", "nombre": "Educación de Hijos y Planificación Universitaria", "categoria_interes": "Familia"},
+    {"id": "int_024", "nombre": "Viajes Familiares y Vacaciones Escolares", "categoria_interes": "Viajes"},
+    {"id": "int_025", "nombre": "Seguros de Vida y Salud", "categoria_interes": "Finanzas Personales"},
+    {"id": "int_026", "nombre": "Alimentación Orgánica y Saludable", "categoria_interes": "Salud y Bienestar"},
+    {"id": "int_027", "nombre": "Vehículos Familiares y SUVs", "categoria_interes": "Automotriz"},
+    {"id": "int_028", "nombre": "Mejoras del Hogar y Remodelación", "categoria_interes": "Hogar"},
+    {"id": "int_029", "nombre": "Salud Preventiva y Bienestar Senior", "categoria_interes": "Salud y Bienestar"},
+    {"id": "int_030", "nombre": "Viajes Culturales y Cruceros", "categoria_interes": "Viajes"},
+    {"id": "int_031", "nombre": "Marketing Digital (SEO/SEM)", "categoria_interes": "Negocios"},
+    {"id": "int_032", "nombre": "Herramientas SaaS para Empresas", "categoria_interes": "Negocios"},
+    {"id": "int_033", "nombre": "Running y Ciclismo", "categoria_interes": "Deportes"},
+    {"id": "int_034", "nombre": "Ropa Deportiva Técnica", "categoria_interes": "Moda"},
+    {"id": "int_035", "nombre": "Nutrición Deportiva y Suplementos", "categoria_interes": "Salud y Bienestar"}
 ]
 
 # Podríamos añadir más parámetros aquí en el futuro, como:
@@ -93,4 +223,55 @@ def obtener_audiencia_por_id(audiencia_id):
     for audiencia in AUDIENCIAS_COLOMBIANAS:
         if audiencia["id"] == audiencia_id:
             return audiencia
+    return None
+
+def obtener_interes_por_id(interes_id):
+    for interes in INTERESES_DETALLADOS:
+        if interes["id"] == interes_id:
+            return interes
+    return None
+
+def obtener_todos_los_intereses():
+    return INTERESES_DETALLADOS
+
+def obtener_todas_las_marcas():
+    return MARCAS_COLOMBIANAS
+
+def obtener_todas_las_audiencias():
+    return AUDIENCIAS_COLOMBIANAS
+
+CAMPAIGN_GOALS = [
+    {
+        "id": "awareness",
+        "nombre": "Reconocimiento de Marca",
+        "descripcion": "Maximizar la visibilidad y el recuerdo de la marca entre la audiencia objetivo.",
+        "kpi_primario": "impresiones"
+    },
+    {
+        "id": "traffic",
+        "nombre": "Tráfico al Sitio Web",
+        "descripcion": "Generar la mayor cantidad de visitas de calidad al sitio web de la campaña.",
+        "kpi_primario": "clics"
+    },
+    {
+        "id": "engagement",
+        "nombre": "Interacción con la Marca",
+        "descripcion": "Fomentar la participación activa de la audiencia con el contenido de la marca.",
+        "kpi_primario": "interacciones_calculadas" # Este KPI es un placeholder, necesitaría una métrica real
+    },
+    {
+        "id": "conversion",
+        "nombre": "Conversiones",
+        "descripcion": "Impulsar acciones específicas valiosas en el sitio web (e.g., compras, registros).",
+        "kpi_primario": "conversiones_calculadas" # Este KPI es un placeholder
+    }
+]
+
+def obtener_todos_los_campaign_goals():
+    return CAMPAIGN_GOALS
+
+def obtener_campaign_goal_por_id(goal_id):
+    for goal in CAMPAIGN_GOALS:
+        if goal["id"] == goal_id:
+            return goal
     return None
