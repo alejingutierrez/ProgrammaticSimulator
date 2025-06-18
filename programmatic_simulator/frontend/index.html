@@ -11,6 +11,10 @@
     <div class="container">
         <h1>Simulador de Campañas Programáticas</h1>
 
+        <div id="estimatedAudienceSizeContainer">
+            <p>Estimated Targetable Audience: <span id="estimatedAudienceDisplay">N/A</span></p>
+        </div>
+
         <form id="campaignForm">
             <div class="form-group">
                 <label for="marca">Selecciona una Marca:</label>
@@ -24,6 +28,9 @@
                 <select id="audiencia" name="audiencia" required>
                     <option value="">Cargando audiencias...</option>
                 </select>
+                <div id="audienceDescriptionContainer">
+                    <p id="audienceDescriptionDisplay" class="audience-description-text">Select an audience to see its description.</p>
+                </div>
             </div>
 
             <div class="form-group">

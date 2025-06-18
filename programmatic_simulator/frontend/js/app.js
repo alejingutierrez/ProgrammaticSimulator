@@ -7,6 +7,10 @@ document.addEventListener('DOMContentLoaded', () => {
     const interesesSelect = document.getElementById('intereses');
     const campaignGoalSelect = document.getElementById('campaignGoal'); // Nueva referencia
     const resultsContainer = document.getElementById('resultsContainer');
+    const estimatedAudienceDisplay = document.getElementById('estimatedAudienceDisplay'); // Nueva referencia
+    const audienceDescriptionDisplay = document.getElementById('audienceDescriptionDisplay'); // Referencia para descripción
+
+    let allAudiencesData = []; // Variable para almacenar datos de audiencias
 
     // Actualizado para coincidir con los nuevos campos en index.html
     const originalResultsHTML = `
@@ -205,4 +209,115 @@ document.addEventListener('DOMContentLoaded', () => {
 
     cargarDatosIniciales();
     cargarIntereses(); // Cargar los intereses al iniciar
+
+    // Función para actualizar el tamaño estimado de la audiencia
+    async function updateEstimatedAudienceSize() {
+        const audienciaId = audienciaSelect.value;
+        const selectedInteresOptions = Array.from(interesesSelect.selectedOptions);
+        const selectedInteresIds = selectedInteresOptions.map(option => option.value).filter(value => value !== "");
+
+        if (!audienciaId) {
+            estimatedAudienceDisplay.textContent = "Select an audience";
+            return;
+        }
+
+        let url = `http://localhost:5001/api/estimate-audience-size?audienciaId=${encodeURIComponent(audienciaId)}`;
+        if (selectedInteresIds.length > 0) {
+            selectedInteresIds.forEach(id => {
+                url += `&selectedInteresIds=${encodeURIComponent(id)}`;
+            });
+        }
+
+        try {
+            estimatedAudienceDisplay.textContent = "Estimating...";
+            const response = await fetch(url);
+            if (!response.ok) {
+                if (response.status === 404) {
+                    const errorData = await response.json().catch(() => null);
+                    estimatedAudienceDisplay.textContent = errorData?.error || "Audience not found";
+                } else {
+                    throw new Error(`Error fetching audience size: ${response.status}`);
+                }
+                return;
+            }
+            const data = await response.json();
+
+            if (data.refined_potential_audience_size !== undefined) {
+                let displayText = data.refined_potential_audience_size.toLocaleString('es-CO');
+                if (selectedInteresIds.length > 0 && data.potential_audience_size_from_segment && data.potential_audience_size_from_segment !== data.refined_potential_audience_size) {
+                    displayText += ` (refined from ${data.potential_audience_size_from_segment.toLocaleString('es-CO')})`;
+                }
+                estimatedAudienceDisplay.textContent = displayText;
+            } else if (data.error) {
+                estimatedAudienceDisplay.textContent = data.error;
+            }
+             else {
+                estimatedAudienceDisplay.textContent = "N/A";
+            }
+        } catch (error) {
+            console.error('Error updating estimated audience size:', error);
+            estimatedAudienceDisplay.textContent = "Could not estimate";
+        }
+    }
+
+    // Función para actualizar la descripción de la audiencia
+    function updateAudienceDescription() {
+        const selectedAudienceId = audienciaSelect.value;
+        if (selectedAudienceId && allAudiencesData.length > 0) {
+            const selectedAudience = allAudiencesData.find(aud => aud.id === selectedAudienceId);
+            if (selectedAudience && selectedAudience.descripcion) {
+                audienceDescriptionDisplay.textContent = selectedAudience.descripcion;
+            } else if (selectedAudience) { // Audience found but no description
+                audienceDescriptionDisplay.textContent = "Descripción no disponible para esta audiencia.";
+            } else { // Audience ID selected but not found in data (should not happen if data is consistent)
+                audienceDescriptionDisplay.textContent = "Detalles de audiencia no encontrados.";
+            }
+        } else {
+            audienceDescriptionDisplay.textContent = "Select an audience to see its description.";
+        }
+    }
+
+    // Event listeners para actualizar la estimación de audiencia Y la descripción
+    audienciaSelect.addEventListener('change', () => {
+        updateEstimatedAudienceSize();
+        updateAudienceDescription(); // Añadir llamada para actualizar descripción
+    });
+    interesesSelect.addEventListener('change', updateEstimatedAudienceSize); // Intereses solo afectan la estimación
+
+    // cargarDatosIniciales unificada y correcta
+    async function cargarDatosIniciales() {
+        try {
+            const response = await fetch('http://localhost:5001/api/market-data');
+            if (!response.ok) {
+                throw new Error(`Error al cargar datos de mercado: ${response.status}`);
+            }
+            const data = await response.json();
+
+            allAudiencesData = data.audiencias || []; // Guardar datos de audiencias
+
+            cargarSelect(marcaSelect, data.marcas, "Selecciona una marca");
+            // Usar allAudiencesData para poblar el select, ya que contiene la info completa
+            cargarSelect(audienciaSelect, allAudiencesData, "Selecciona una audiencia");
+
+            if (data.campaign_goals) {
+                cargarSelect(campaignGoalSelect, data.campaign_goals, "Selecciona un objetivo");
+            } else {
+                campaignGoalSelect.innerHTML = '<option value="">Error al cargar objetivos</option>';
+            }
+            // Llamadas iniciales después de cargar los datos y selectores
+            updateAudienceDescription();
+            updateEstimatedAudienceSize();
+        } catch (error) {
+            console.error('Error al cargar datos iniciales:', error);
+            marcaSelect.innerHTML = '<option value="">Error al cargar marcas</option>';
+            audienciaSelect.innerHTML = '<option value="">Error al cargar audiencias</option>';
+            campaignGoalSelect.innerHTML = '<option value="">Error al cargar objetivos</option>';
+            if(audienceDescriptionDisplay) audienceDescriptionDisplay.textContent = "Error al cargar datos de audiencias.";
+            alert("No se pudieron cargar todos los datos iniciales desde el servidor. Verifica que el backend esté funcionando.\n" + error.message);
+        }
+    }
+
+    // Iniciar la carga de datos
+    cargarDatosIniciales();
+    cargarIntereses(); // Cargar los intereses al iniciar (esto ya estaba, se mantiene)
 });
