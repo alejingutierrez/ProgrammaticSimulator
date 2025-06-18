@@ -42,6 +42,23 @@ class TestCampaignLogic(unittest.TestCase):
     SEGMENT_JOVENES = market_data.obtener_segmento_poblacion_por_id("jovenes_18_24_col")
     SEGMENT_FAMILIAS = market_data.obtener_segmento_poblacion_por_id("familias_35_55_col")
 
+    # --- IDs for new affinity tests ---
+    MARCA_RAPPI_ID = "marca_012" # Rappi (Tech) - Same as MARCA_TECH_ID
+    MARCA_MERCADOLIBRE_ID = "marca_013" # Mercado Libre (Tech)
+    MARCA_CLARO_ID = "marca_007" # Claro (Telecom)
+
+    PROD_CLARO_5G_ID = "prod_007_01" # Claro Plan Pospago 5G
+    PROD_ML_TECH_ID = "prod_013_03" # Mercado Libre Tecnología
+    PROD_RAPPI_PRIME_ID = "prod_012_01" # Rappi Prime
+    PROD_RAPPI_RESTAURANTES_ID = "prod_012_02" # Rappi Entrega Restaurantes
+
+    INT_TECNOLOGIA_EMERGENTE_ID = "int_001" # Modified with new affinities
+    INT_INVERSIONES_CRIPTO_ID = "int_009"   # Modified with new affinities
+    INT_RESTAURANTES_GOURMET_ID = "int_011" # Modified with new affinities
+    INT_VIDEOJUEGOS_ID = "int_002"          # Generic interest, likely no new specific affinities
+
+    AUD_PROFESIONALES_JOVENES_ID = "aud_002" # Profesionales Jóvenes
+
 
     def assertFeedbackContains(self, feedback_list, expected_substring, msg=""):
         default_msg = f"Feedback esperado '{expected_substring}' no encontrado en {feedback_list}"
@@ -131,10 +148,184 @@ class TestCampaignLogic(unittest.TestCase):
             campaign_goal_id=self.GOAL_TRAFFIC_ID
         )
         self.assertIsInstance(result, dict)
-        self.assertEqual(result['interest_match_score'], 0.35)
-        self.assertFeedbackContains(result['mensajes_feedback'], "No seleccionaste intereses específicos")
-        # Score adjusted
-        self.assertTrue(2 <= result['puntuacion'] <= 5, f"Puntuación {result['puntuacion']} inesperada para 'sin intereses'.")
+        self.assertAlmostEqual(result['interest_match_score'], 0.3, delta=0.001) # Updated to 0.3 based on new logic
+        self.assertFeedbackContains(result['mensajes_feedback'], "No seleccionaste intereses. Usando puntuación de afinidad de interés base (0.3).")
+        # Score might change based on the 0.05 difference in interest_match_score.
+        # The impact of interest_match_score on puntuacion_actual was PENALIDAD_SUAVE_TARGETING (-1.0)
+        # This penalty is no longer applied by default if no interests are selected in the new logic.
+        # So, the score might actually increase. Let's adjust expectation.
+        # Old: 2-5. New: Might be higher. For now, let's widen it or re-evaluate based on a run.
+        # If no penalty, score should be higher than when it had -1.0.
+        # Base 3.0. Afinidad marca-audiencia (Bancolombia-Jovenes = 0.5) -> +0.75 (BONUS_BUEN_TARGETING/2)
+        # Intereses: old 0.35 with -1.0 penalty. New 0.3 without specific penalty.
+        # So, score should increase by approx 1.0 if all else same.
+        # Efectividad_targeting_combinada: old (0.5+0.35)/2 = 0.425. New (0.5+0.3)/2 = 0.4
+        # This change is minor.
+        # The main difference is removal of PENALIDAD_SUAVE_TARGETING for no interests selected.
+        # Old Puntuacion actual = 3.0 + 0.75 (afinidad) - 1.0 (intereses) = 2.75 before goal/budget.
+        # New Puntuacion actual = 3.0 + 0.75 (afinidad) = 3.75 before goal/budget.
+        # So, an increase of 1.0 in puntuacion_actual.
+        self.assertTrue(3 <= result['puntuacion'] <= 6, f"Puntuación {result['puntuacion']} inesperada para 'sin intereses'.")
+
+
+    # --- Test Cases for New Affinity Logic ---
+
+    def test_interest_affinity_by_product(self):
+        """Interest affinity is derived from specific product affinity."""
+        # int_001 (Tecnología Emergente) has afinidad_producto: {"prod_012_01": 0.65}
+        # Rappi Prime is prod_012_01 from marca_012 (Rappi)
+        result = simular_campana(
+            marca_id=self.MARCA_RAPPI_ID, # Rappi
+            audiencia_id=self.AUD_JOVENES_ID, # Any audience
+            presupuesto=self.PRESUPUESTO_MEDIO,
+            selected_interes_ids=[self.INT_TECNOLOGIA_EMERGENTE_ID],
+            selected_product_ids=[self.PROD_RAPPI_PRIME_ID],
+            campaign_goal_id=self.GOAL_TRAFFIC_ID
+        )
+        self.assertIsInstance(result, dict)
+        self.assertNotIn("error", result, result.get("mensajes_feedback"))
+        self.assertAlmostEqual(result['interest_match_score'], 0.65, delta=0.001)
+        self.assertFeedbackContains(result['mensajes_feedback'], f"Interés '{market_data.obtener_interes_por_id(self.INT_TECNOLOGIA_EMERGENTE_ID)['nombre']}' tiene afinidad de producto promedio de 0.65")
+
+    def test_interest_affinity_by_brand_when_no_product_match(self):
+        """Interest affinity uses brand affinity if no specific product match within the interest."""
+        # int_001 (Tecnología Emergente) has afinidad_marca: {"marca_012": 0.7}
+        # Use a Rappi product (prod_012_02) for which int_001 has NO specific afinidad_producto entry.
+        result = simular_campana(
+            marca_id=self.MARCA_RAPPI_ID, # Rappi
+            audiencia_id=self.AUD_JOVENES_ID,
+            presupuesto=self.PRESUPUESTO_MEDIO,
+            selected_interes_ids=[self.INT_TECNOLOGIA_EMERGENTE_ID],
+            selected_product_ids=[self.PROD_RAPPI_RESTAURANTES_ID], # Assume int_001 has no specific affinity for this Rappi product
+            campaign_goal_id=self.GOAL_TRAFFIC_ID
+        )
+        self.assertIsInstance(result, dict)
+        self.assertNotIn("error", result, result.get("mensajes_feedback"))
+        # Since prod_012_02 is not in int_001's afnidad_producto, it should fallback to int_001's afnidad_marca for marca_012
+        self.assertAlmostEqual(result['interest_match_score'], 0.7, delta=0.001)
+        self.assertFeedbackContains(result['mensajes_feedback'], f"Interés '{market_data.obtener_interes_por_id(self.INT_TECNOLOGIA_EMERGENTE_ID)['nombre']}' tiene afinidad de marca de 0.70")
+
+    def test_interest_affinity_product_precedence(self):
+        """Product affinity for an interest takes precedence over brand affinity for that interest."""
+        # int_001 has afinidad_producto: {"prod_012_01": 0.65} and afinidad_marca: {"marca_012": 0.7}
+        # Campaign for marca_012 (Rappi) with prod_012_01 (Rappi Prime)
+        result = simular_campana(
+            marca_id=self.MARCA_RAPPI_ID,
+            audiencia_id=self.AUD_JOVENES_ID,
+            presupuesto=self.PRESUPUESTO_MEDIO,
+            selected_interes_ids=[self.INT_TECNOLOGIA_EMERGENTE_ID],
+            selected_product_ids=[self.PROD_RAPPI_PRIME_ID], # This product has specific affinity in int_001
+            campaign_goal_id=self.GOAL_TRAFFIC_ID
+        )
+        self.assertIsInstance(result, dict)
+        self.assertNotIn("error", result, result.get("mensajes_feedback"))
+        self.assertAlmostEqual(result['interest_match_score'], 0.65, delta=0.001, msg="Product affinity (0.65) should take precedence over brand affinity (0.7)")
+        self.assertFeedbackContains(result['mensajes_feedback'], "tiene afinidad de producto promedio de 0.65")
+        self.assertFalse(any("tiene afinidad de marca de 0.70" in msg for msg in result['mensajes_feedback'] if self.INT_TECNOLOGIA_EMERGENTE_ID in msg), "Brand affinity message should not appear if product affinity took precedence for this interest.")
+
+    def test_interest_affinity_average_for_multiple_selected_products_one_interest(self):
+        """
+        Test if an interest's score is the average of its affinities for *multiple selected products* of the campaign's brand.
+        Current int_001 data: "afinidad_producto": {"prod_007_01": 0.75, "prod_013_03": 0.85, "prod_012_01": 0.65}
+        If campaign is for MARCA_CLARO_ID (marca_007) and selected products are [PROD_CLARO_5G_ID ("prod_007_01")]
+        then int_001's score will be 0.75.
+        If int_001 also had affinity for "prod_007_02": 0.5 and selected_product_ids included it, then it would be (0.75+0.5)/2.
+        This test verifies the mechanism with one product; data doesn't easily support multiple for one brand in one interest yet.
+        """
+        # Using int_001 for MARCA_CLARO_ID and its product PROD_CLARO_5G_ID
+        # int_001 has afinidad_producto: {"prod_007_01": 0.75}
+        result = simular_campana(
+            marca_id=self.MARCA_CLARO_ID,
+            audiencia_id=self.AUD_JOVENES_ID,
+            presupuesto=self.PRESUPUESTO_MEDIO,
+            selected_interes_ids=[self.INT_TECNOLOGIA_EMERGENTE_ID],
+            selected_product_ids=[self.PROD_CLARO_5G_ID], # Only one product of Claro here
+            campaign_goal_id=self.GOAL_TRAFFIC_ID
+        )
+        self.assertIsInstance(result, dict)
+        self.assertNotIn("error", result, result.get("mensajes_feedback"))
+        # int_001 has {"prod_007_01": 0.75}. Only this product is selected. So, score is 0.75.
+        self.assertAlmostEqual(result['interest_match_score'], 0.75, delta=0.001)
+        self.assertFeedbackContains(result['mensajes_feedback'], f"Interés '{market_data.obtener_interes_por_id(self.INT_TECNOLOGIA_EMERGENTE_ID)['nombre']}' tiene afinidad de producto promedio de 0.75")
+
+    def test_interest_affinity_average_for_multiple_interests(self):
+        """Interest_match_score is the average of scores from multiple selected interests."""
+        # int_001 for MARCA_RAPPI_ID, PROD_RAPPI_PRIME_ID -> gets 0.65
+        # int_002 (Videojuegos Online) - assume it has no specific affinity for Rappi or Rappi Prime, gets 0.1 (default)
+        result = simular_campana(
+            marca_id=self.MARCA_RAPPI_ID,
+            audiencia_id=self.AUD_JOVENES_ID,
+            presupuesto=self.PRESUPUESTO_MEDIO,
+            selected_interes_ids=[self.INT_TECNOLOGIA_EMERGENTE_ID, self.INT_VIDEOJUEGOS_ID],
+            selected_product_ids=[self.PROD_RAPPI_PRIME_ID],
+            campaign_goal_id=self.GOAL_TRAFFIC_ID
+        )
+        self.assertIsInstance(result, dict)
+        self.assertNotIn("error", result, result.get("mensajes_feedback"))
+
+        expected_score_int1 = 0.65
+        expected_score_int2 = 0.1 # Default
+        expected_average_score = (expected_score_int1 + expected_score_int2) / 2
+        self.assertAlmostEqual(result['interest_match_score'], expected_average_score, delta=0.001)
+        self.assertFeedbackContains(result['mensajes_feedback'], f"Puntuación de afinidad de intereses calculada: {expected_average_score:.2f}")
+
+    def test_interest_affinity_default_score_for_unrelated_interest(self):
+        """An interest with no specific product or brand affinity gets the default score (0.1)."""
+        # int_002 (Videojuegos Online) for MARCA_RAPPI_ID campaign. Assume no specific affinities.
+        result = simular_campana(
+            marca_id=self.MARCA_RAPPI_ID,
+            audiencia_id=self.AUD_JOVENES_ID,
+            presupuesto=self.PRESUPUESTO_MEDIO,
+            selected_interes_ids=[self.INT_VIDEOJUEGOS_ID],
+            selected_product_ids=[self.PROD_RAPPI_PRIME_ID], # Rappi Prime
+            campaign_goal_id=self.GOAL_TRAFFIC_ID
+        )
+        self.assertIsInstance(result, dict)
+        self.assertNotIn("error", result, result.get("mensajes_feedback"))
+        # int_002 is not expected to have affinity for Rappi or its products, so it should get 0.1
+        # We need to check the feedback for this specific interest if possible, or the overall score if it's the only interest.
+        # The feedback "Interés 'Videojuegos Online' no tiene afinidad específica..." or similar would be ideal.
+        # The current feedback for default score is less explicit per interest, so we check the calculated score.
+        self.assertAlmostEqual(result['interest_match_score'], 0.1, delta=0.001)
+
+
+    # --- Test Cases for afinidad_marca_audiencia Confirmation ---
+    def test_audience_affinity_by_product(self):
+        """afinidad_marca_audiencia uses product-specific audience affinity if available."""
+        # marca_001 (Bancolombia), aud_002 (Profesionales Jóvenes)
+        # prod_001_01 (Cuenta de Ahorros) has afinidad_audiencia: {"aud_002": 0.7}
+        result = simular_campana(
+            marca_id=self.MARCA_BANCO_ID, # Bancolombia
+            audiencia_id=self.AUD_PROFESIONALES_JOVENES_ID, # Profesionales Jóvenes
+            presupuesto=self.PRESUPUESTO_MEDIO,
+            selected_product_ids=["prod_001_01"], # Cuenta de Ahorros
+            campaign_goal_id=self.GOAL_TRAFFIC_ID
+        )
+        self.assertIsInstance(result, dict)
+        self.assertNotIn("error", result, result.get("mensajes_feedback"))
+        self.assertAlmostEqual(result['afinidad_marca_audiencia'], 0.7, delta=0.001)
+        self.assertFeedbackContains(result['mensajes_feedback'], "Afinidad calculada (0.70) basada en el promedio de 1 producto(s) seleccionados.")
+
+    def test_audience_affinity_by_brand_category_fallback(self):
+        """afinidad_marca_audiencia falls back to brand-category if no product-specific audience affinity."""
+        # marca_001 (Bancolombia - Categoria "Banca")
+        # aud_001 (Jóvenes Universitarios)
+        # Check aud_001's afinidad_marca_categoria for "Banca": it's 0.5
+        # Assume prod_001_03 (Crédito Hipotecario) has no specific affinity listed for aud_001.
+        # market_data: prod_001_03 has {"aud_004": 0.7, "aud_013": 0.9}. No aud_001.
+        result = simular_campana(
+            marca_id=self.MARCA_BANCO_ID, # Bancolombia
+            audiencia_id=self.AUD_JOVENES_ID, # Jóvenes Universitarios
+            presupuesto=self.PRESUPUESTO_MEDIO,
+            selected_product_ids=["prod_001_03"], # Crédito Hipotecario
+            campaign_goal_id=self.GOAL_TRAFFIC_ID
+        )
+        self.assertIsInstance(result, dict)
+        self.assertNotIn("error", result, result.get("mensajes_feedback"))
+        # Expected fallback to aud_001's affinity for "Banca" category (0.5)
+        self.assertAlmostEqual(result['afinidad_marca_audiencia'], 0.5, delta=0.001)
+        self.assertFeedbackContains(result['mensajes_feedback'], "No se encontraron afinidades específicas para los productos seleccionados y la audiencia. Usando afinidad de marca-categoría.")
+        self.assertFeedbackContains(result['mensajes_feedback'], "Afinidad calculada (0.50) basada en la categoría de la marca 'Banca'.")
 
     # --- NEW TEST CASES ---
 
