@@ -9,12 +9,22 @@ document.addEventListener('DOMContentLoaded', () => {
     const campaignGoalSelect = document.getElementById('campaignGoal'); // Nueva referencia
     const productSelectionContainer = document.getElementById('productSelectionContainer'); // New reference
     const productosSelect = document.getElementById('productos'); // New reference
+    const presupuestoInput = document.getElementById('presupuesto'); // Referencia para el input de presupuesto
     const resultsContainer = document.getElementById('resultsContainer');
     const estimatedAudienceDisplay = document.getElementById('estimatedAudienceDisplay'); // Nueva referencia
     const audienceDescriptionDisplay = document.getElementById('audienceDescriptionDisplay'); // Referencia para descripción
+    const audienceSizeChangeIndicator = document.getElementById('audienceSizeChangeIndicator'); // For displaying size changes
+    const totalAffinityDisplay = document.getElementById('totalAffinityDisplay'); // For displaying total affinity
+    const presupuestoValueDisplay = document.getElementById('presupuestoValueDisplay'); // For budget slider value
+    const fechaInicioInput = document.getElementById('fechaInicio');
+    const fechaFinInput = document.getElementById('fechaFin');
+    const campaignDurationDisplay = document.getElementById('campaignDurationDisplay');
+    const totalCampaignBudgetDisplay = document.getElementById('totalCampaignBudgetDisplay');
+
 
     let allAudiencesData = []; // Variable para almacenar datos de audiencias
     let allBrandsData = []; // Variable para almacenar datos de marcas con sus productos
+    let previousAudienceSize = null; // Variable to store the previous audience size
 
     // Actualizado para coincidir con los nuevos campos en index.html
     const originalResultsHTML = `
@@ -23,7 +33,9 @@ document.addEventListener('DOMContentLoaded', () => {
             <p><strong>Audiencia:</strong> <span id="resAudiencia"></span></p>
             <p><strong>Productos Seleccionados:</strong> <span id="resProductosSeleccionados"></span></p>
             <p><strong>Objetivo de Campaña:</strong> <span id="resCampaignGoal"></span></p>
-            <p><strong>Presupuesto Inicial (COP):</strong> <span id="resPresupuestoInicial"></span></p>
+            <p><strong>Inversión por día (COP):</strong> <span id="resInversionPorDia"></span></p>
+            <p><strong>Duración de la campaña:</strong> <span id="resDuracionCampana"></span> días</p>
+            <p><strong>Presupuesto Total Estimado (COP):</strong> <span id="resPresupuestoInicial"></span></p>
             <hr>
             <p class="score"><strong>Puntuación de la Campaña:</strong> <span id="resPuntuacion"></span> / 10</p>
             <p><strong>Afinidad Marca-Audiencia:</strong> <span id="resAfinidad"></span></p>
@@ -89,9 +101,11 @@ document.addEventListener('DOMContentLoaded', () => {
                 checkbox.id = `interes-${interes.id}`;
                 checkbox.value = interes.id;
                 checkbox.name = 'interes_selection';
-                // Add event listener to each checkbox for updating audience estimate
-                checkbox.addEventListener('change', updateEstimatedAudienceSize);
-
+                // Add event listener to each checkbox for updating audience estimate and total affinity
+                checkbox.addEventListener('change', () => {
+                    updateEstimatedAudienceSize();
+                    updateTotalAffinity();
+                });
 
                 const label = document.createElement('label');
                 label.htmlFor = `interes-${interes.id}`;
@@ -113,8 +127,32 @@ document.addEventListener('DOMContentLoaded', () => {
 
         const marcaId = marcaSelect.value;
         const audienciaId = audienciaSelect.value;
-        const campaignGoalId = campaignGoalSelect.value; // Obtener el objetivo seleccionado
-        const presupuesto = document.getElementById('presupuesto').value;
+        const campaignGoalId = campaignGoalSelect.value;
+        const dailyInvestment = parseInt(presupuestoInput.value, 10);
+        const startDate = fechaInicioInput.value;
+        const endDate = fechaFinInput.value;
+
+        if (!marcaId || !audienciaId || !campaignGoalId || !startDate || !endDate) {
+            alert("Por favor, completa todos los campos requeridos, incluyendo marca, audiencia, objetivo y fechas de campaña.");
+            return;
+        }
+
+        const date1 = new Date(startDate);
+        const date2 = new Date(endDate);
+
+        if (date2 < date1) {
+            alert("La fecha de fin no puede ser anterior a la fecha de inicio.");
+            return;
+        }
+
+        const diffTime = Math.abs(date2 - date1);
+        const campaignDurationDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1;
+        const totalBudget = dailyInvestment * campaignDurationDays;
+
+        // Store these for displayResults
+        const dailyInvestmentFromForm = dailyInvestment;
+        const durationFromForm = campaignDurationDays;
+
 
         const selectedInteresCheckboxes = document.querySelectorAll('#interesesCheckboxContainer input[type="checkbox"]:checked');
         const selectedInteresIds = Array.from(selectedInteresCheckboxes).map(cb => cb.value);
@@ -142,25 +180,27 @@ document.addEventListener('DOMContentLoaded', () => {
                 body: JSON.stringify({
                     marcaId: marcaId,
                     audienciaId: audienciaId,
-                    presupuesto: presupuesto,
+                    presupuesto: totalBudget, // Send total budget
                     selectedInteresIds: selectedInteresIds,
-                    campaignGoalId: campaignGoalId, // Enviar el objetivo de campaña
-                    selected_product_ids: selectedProductIds // Enviar productos seleccionados
+                    campaignGoalId: campaignGoalId,
+                    selected_product_ids: selectedProductIds,
+                    campaignDurationDays: campaignDurationDays // Send duration
                 }),
             });
 
             if (!response.ok) {
-                // Si el servidor responde con un error (4xx, 5xx)
                 const errorData = await response.json().catch(() => ({ error: "Error desconocido del servidor" }));
                 throw new Error(errorData.error || `Error del servidor: ${response.status}`);
             }
 
             const data = await response.json();
-            displayResults(data);
+            // Pass dailyInvestment and duration to displayResults or make them accessible globally/scoped
+            displayResults(data, dailyInvestmentFromForm, durationFromForm);
 
         } catch (error) {
             console.error('Error al simular campaña:', error);
-            displayResults({ error: error.message || "No se pudo conectar con el servidor de simulación." });
+            // Pass null or undefined for extra params if error occurs before they are set
+            displayResults({ error: error.message || "No se pudo conectar con el servidor de simulación." }, dailyInvestmentFromForm, durationFromForm);
         }
     });
 
@@ -191,7 +231,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    function displayResults(data) {
+    function displayResults(data, dailyInvestment, campaignDuration) { // Added dailyInvestment, campaignDuration
         resultsContainer.innerHTML = originalResultsHTML;
 
         if (data.error) {
@@ -200,7 +240,6 @@ document.addEventListener('DOMContentLoaded', () => {
             document.getElementById('resMarca').textContent = data.marca_nombre || 'N/A';
             document.getElementById('resAudiencia').textContent = data.audiencia_nombre || 'N/A';
 
-            // Mostrar productos seleccionados
             const resProductosSeleccionadosSpan = document.getElementById('resProductosSeleccionados');
             const formSelectedProductIds = Array.from(productosSelect.options)
                                            .filter(option => option.selected && option.value !== "")
@@ -214,13 +253,30 @@ document.addEventListener('DOMContentLoaded', () => {
                     });
                     resProductosSeleccionadosSpan.textContent = productNames.join(', ');
                 } else {
-                    resProductosSeleccionadosSpan.textContent = formSelectedProductIds.join(', '); // Fallback a IDs si no se encuentran nombres
+                    resProductosSeleccionadosSpan.textContent = formSelectedProductIds.join(', ');
                 }
             } else {
                 resProductosSeleccionadosSpan.textContent = 'Ninguno';
             }
 
             document.getElementById('resCampaignGoal').textContent = data.campaign_goal_nombre || 'N/A';
+
+            // Display daily investment and duration from form, total budget from simulation response
+            const resInversionPorDiaEl = document.getElementById('resInversionPorDia');
+            if (resInversionPorDiaEl && dailyInvestment !== undefined) {
+                 resInversionPorDiaEl.textContent = dailyInvestment.toLocaleString('es-CO', { style: 'currency', currency: 'COP', minimumFractionDigits: 0 });
+            } else if (resInversionPorDiaEl) {
+                 resInversionPorDiaEl.textContent = 'N/A';
+            }
+
+            const resDuracionCampanaEl = document.getElementById('resDuracionCampana');
+            if (resDuracionCampanaEl && campaignDuration !== undefined) {
+                resDuracionCampanaEl.textContent = campaignDuration;
+            } else if (resDuracionCampanaEl) {
+                resDuracionCampanaEl.textContent = 'N/A';
+            }
+
+            // resPresupuestoInicial now shows the total budget received from the backend
             document.getElementById('resPresupuestoInicial').textContent = data.presupuesto_inicial?.toLocaleString('es-CO', { style: 'currency', currency: 'COP' }) || 'N/A';
             document.getElementById('resPuntuacion').textContent = data.puntuacion !== undefined ? data.puntuacion : 'N/A';
 
@@ -266,13 +322,29 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Función para actualizar el tamaño estimado de la audiencia
     async function updateEstimatedAudienceSize() {
-        const audienciaId = audienciaSelect.value;
+        // Store previous size
+        const currentDisplayValue = estimatedAudienceDisplay.textContent;
+        let currentNumericSize = null;
+        if (currentDisplayValue && currentDisplayValue !== "N/A" && currentDisplayValue !== "Estimating..." && currentDisplayValue !== "Could not estimate" && currentDisplayValue !== "Select an audience" && !currentDisplayValue.includes("Error") && !currentDisplayValue.includes("Audience not found")) {
+            const parts = currentDisplayValue.split(' ');
+            const numericString = parts[0].replace(/[,.]/g, ''); // Remove commas and dots (for thousands)
+            if (!isNaN(numericString) && numericString.trim() !== '') {
+                currentNumericSize = parseInt(numericString, 10);
+            }
+        }
+        previousAudienceSize = currentNumericSize;
 
+        const audienciaId = audienciaSelect.value;
         const selectedInteresCheckboxes = document.querySelectorAll('#interesesCheckboxContainer input[type="checkbox"]:checked');
         const selectedInteresIds = Array.from(selectedInteresCheckboxes).map(cb => cb.value);
 
+        // Clear indicator initially and remove classes
+        audienceSizeChangeIndicator.textContent = '';
+        audienceSizeChangeIndicator.className = '';
+
         if (!audienciaId) {
             estimatedAudienceDisplay.textContent = "Select an audience";
+            previousAudienceSize = null; // Reset if no audience is selected
             return;
         }
 
@@ -291,27 +363,52 @@ document.addEventListener('DOMContentLoaded', () => {
                     const errorData = await response.json().catch(() => null);
                     estimatedAudienceDisplay.textContent = errorData?.error || "Audience not found";
                 } else {
+                    estimatedAudienceDisplay.textContent = "Error fetching size"; // Generic error
                     throw new Error(`Error fetching audience size: ${response.status}`);
                 }
+                audienceSizeChangeIndicator.textContent = ''; // Clear on error
+                previousAudienceSize = null; // Reset on error
                 return;
             }
             const data = await response.json();
 
             if (data.refined_potential_audience_size !== undefined) {
-                let displayText = data.refined_potential_audience_size.toLocaleString('es-CO');
-                if (selectedInteresIds.length > 0 && data.potential_audience_size_from_segment && data.potential_audience_size_from_segment !== data.refined_potential_audience_size) {
+                const newAudienceSize = data.refined_potential_audience_size;
+                let displayText = newAudienceSize.toLocaleString('es-CO');
+                if (selectedInteresIds.length > 0 && data.potential_audience_size_from_segment && data.potential_audience_size_from_segment !== newAudienceSize) {
                     displayText += ` (refined from ${data.potential_audience_size_from_segment.toLocaleString('es-CO')})`;
                 }
                 estimatedAudienceDisplay.textContent = displayText;
+
+                if (previousAudienceSize !== null) {
+                    if (newAudienceSize > previousAudienceSize) {
+                        audienceSizeChangeIndicator.textContent = ' (Increased ↑)';
+                        audienceSizeChangeIndicator.className = 'size-increased';
+                    } else if (newAudienceSize < previousAudienceSize) {
+                        audienceSizeChangeIndicator.textContent = ' (Decreased ↓)';
+                        audienceSizeChangeIndicator.className = 'size-decreased';
+                    } else {
+                        audienceSizeChangeIndicator.textContent = ' (No change)';
+                        audienceSizeChangeIndicator.className = 'size-no-change';
+                    }
+                } else {
+                     audienceSizeChangeIndicator.textContent = ''; // No previous size, so no change text
+                }
+
             } else if (data.error) {
                 estimatedAudienceDisplay.textContent = data.error;
-            }
-             else {
+                audienceSizeChangeIndicator.textContent = '';
+                previousAudienceSize = null;
+            } else {
                 estimatedAudienceDisplay.textContent = "N/A";
+                audienceSizeChangeIndicator.textContent = '';
+                previousAudienceSize = null;
             }
         } catch (error) {
             console.error('Error updating estimated audience size:', error);
             estimatedAudienceDisplay.textContent = "Could not estimate";
+            audienceSizeChangeIndicator.textContent = '';
+            previousAudienceSize = null;
         }
     }
 
@@ -335,9 +432,203 @@ document.addEventListener('DOMContentLoaded', () => {
     // Event listeners para actualizar la estimación de audiencia Y la descripción
     audienciaSelect.addEventListener('change', () => {
         updateEstimatedAudienceSize();
-        updateAudienceDescription(); // Añadir llamada para actualizar descripción
+        updateAudienceDescription();
+        // updateFormAccess(); // This is already called by the main select listeners
+        // updateTotalAffinity(); // This will be called by updateFormAccess if appropriate
     });
     // interesesSelect.addEventListener('change', updateEstimatedAudienceSize); // Removed, individual checkboxes have listeners now
+
+
+    // --- Function to update Total Affinity display ---
+    async function updateTotalAffinity() {
+        if (!totalAffinityDisplay) return; // Guard clause if element not found
+
+        const marcaId = marcaSelect.value;
+        const audienciaId = audienciaSelect.value;
+
+        if (!marcaId || !audienciaId) {
+            totalAffinityDisplay.textContent = 'N/A';
+            return;
+        }
+
+        const selectedProductOptions = Array.from(productosSelect.options).filter(option => option.selected && option.value !== "");
+        const selectedProductIds = selectedProductOptions.map(option => option.value);
+
+        const selectedInteresCheckboxes = document.querySelectorAll('#interesesCheckboxContainer input[type="checkbox"]:checked');
+        const selectedInteresIds = Array.from(selectedInteresCheckboxes).map(cb => cb.value);
+
+        totalAffinityDisplay.textContent = 'Calculating...';
+
+        try {
+            const response = await fetch('http://localhost:5001/api/calculate-affinity', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    marcaId: marcaId,
+                    audienciaId: audienciaId,
+                    selectedProductIds: selectedProductIds,
+                    selectedInteresIds: selectedInteresIds
+                })
+            });
+
+            if (response.ok) {
+                const affinityData = await response.json();
+                if (affinityData.error) {
+                    totalAffinityDisplay.textContent = 'Error: ' + affinityData.error;
+                    console.error('Affinity calculation error:', affinityData.error);
+                } else if (affinityData.overall_affinity !== undefined) {
+                    const formattedAffinity = (affinityData.overall_affinity * 100).toFixed(1) + '%';
+                    totalAffinityDisplay.textContent = formattedAffinity;
+                } else {
+                    totalAffinityDisplay.textContent = 'Invalid data';
+                    console.error('Invalid affinity data received:', affinityData);
+                }
+            } else {
+                const errorText = await response.text();
+                totalAffinityDisplay.textContent = 'Error calculating affinity';
+                console.error('Error fetching affinity:', response.status, errorText);
+            }
+        } catch (error) {
+            totalAffinityDisplay.textContent = 'API error';
+            console.error('Failed to fetch total affinity:', error);
+        }
+    }
+
+
+    // Helper function to disable/enable interest checkboxes
+    function disableInteresCheckboxes(disabled) {
+        const checkboxes = interesesCheckboxContainer.querySelectorAll('input[type="checkbox"]');
+        checkboxes.forEach(cb => cb.disabled = disabled);
+    }
+
+    // Helper function to clear interest checkbox selections
+    function clearInteresCheckboxes() {
+        const checkboxes = interesesCheckboxContainer.querySelectorAll('input[type="checkbox"]');
+        checkboxes.forEach(cb => cb.checked = false);
+        // Optionally, call updateEstimatedAudienceSize if clearing interests should affect the estimate display immediately
+        // updateEstimatedAudienceSize();
+    }
+
+    // Core function to update form access based on selections
+    function updateFormAccess() {
+        const marcaSelected = marcaSelect.value !== "";
+        const audienciaSelected = audienciaSelect.value !== "";
+        const campaignGoalSelected = campaignGoalSelect.value !== "";
+
+        // --- Default states: Disable all dependent fields first ---
+        // Products:
+        productosSelect.disabled = true;
+        // productSelectionContainer visibility is handled in marcaSelect's listener.
+
+        // Audience:
+        audienciaSelect.disabled = true;
+
+        // Campaign Goal:
+        campaignGoalSelect.disabled = true;
+
+        // Interests:
+        interesesCheckboxContainer.classList.add('disabled-selection-area');
+        disableInteresCheckboxes(true);
+
+        // Budget & Dates:
+        presupuestoInput.disabled = true;
+        fechaInicioInput.disabled = true;
+        fechaFinInput.disabled = true;
+
+
+        // --- Enable fields based on progression ---
+        if (marcaSelected) {
+            productosSelect.disabled = false; // Enable product selection
+            audienciaSelect.disabled = false; // Enable Audience select
+        }
+
+        if (marcaSelected && audienciaSelected) {
+            campaignGoalSelect.disabled = false; // Enable Campaign Goal
+        }
+
+        if (marcaSelected && audienciaSelected && campaignGoalSelected) {
+            interesesCheckboxContainer.classList.remove('disabled-selection-area');
+            disableInteresCheckboxes(false); // Enable Interest checkboxes
+            presupuestoInput.disabled = false; // Enable Daily Budget input
+            fechaInicioInput.disabled = false; // Enable Start Date input
+            fechaFinInput.disabled = false;    // Enable End Date input
+        }
+
+        // --- Reset logic for fields if a preceding selection is cleared ---
+        if (!marcaSelected) {
+            productosSelect.innerHTML = '<option value="" disabled>Selecciona una marca primero...</option>';
+            if(productSelectionContainer) productSelectionContainer.style.display = 'none';
+            audienciaSelect.value = "";
+            audienceDescriptionDisplay.textContent = "Select an audience to see its description.";
+            estimatedAudienceDisplay.textContent = "N/A";
+            if(audienceSizeChangeIndicator) audienceSizeChangeIndicator.textContent = '';
+            if(totalAffinityDisplay) totalAffinityDisplay.textContent = 'N/A';
+            previousAudienceSize = null;
+            campaignGoalSelect.value = "";
+            clearInteresCheckboxes();
+            // Reset dates and summary
+            fechaInicioInput.value = "";
+            fechaFinInput.value = "";
+            updateCampaignSummary(); // This will set summary to N/A
+        } else if (!audienciaSelected) { // marcaSelected is true
+            campaignGoalSelect.value = "";
+            clearInteresCheckboxes();
+            if(totalAffinityDisplay) totalAffinityDisplay.textContent = 'N/A';
+            fechaInicioInput.value = "";
+            fechaFinInput.value = "";
+            updateCampaignSummary();
+        } else if (!campaignGoalSelected) { // marcaSelected and audienciaSelected are true
+            clearInteresCheckboxes();
+            // Disable budget and dates if goal is cleared
+            presupuestoInput.disabled = true;
+            fechaInicioInput.disabled = true;
+            fechaFinInput.disabled = true;
+            // fechaInicioInput.value = ""; // Optionally clear dates
+            // fechaFinInput.value = "";
+            updateCampaignSummary(); // Update summary, possibly to N/A if dates are cleared or dependent on budget
+        }
+
+        // Call updateTotalAffinity whenever form access might change and inputs are valid
+        if(marcaSelected && audienciaSelected){
+            updateTotalAffinity();
+        } else {
+            if(totalAffinityDisplay) totalAffinityDisplay.textContent = 'N/A';
+        }
+        // updateCampaignSummary(); // Call at the end to ensure summary reflects current state
+        // This is called by date/budget listeners, and also needs to be called if disabling fields resets them
+    }
+
+    function updateCampaignSummary() {
+        if (!campaignDurationDisplay || !totalCampaignBudgetDisplay || !presupuestoInput || !fechaInicioInput || !fechaFinInput) return;
+
+        const dailyInvestment = parseInt(presupuestoInput.value, 10);
+        const startDate = fechaInicioInput.value;
+        const endDate = fechaFinInput.value;
+
+        if (!startDate || !endDate || isNaN(dailyInvestment) || dailyInvestment <= 0) {
+            campaignDurationDisplay.textContent = 'N/A';
+            totalCampaignBudgetDisplay.textContent = 'N/A';
+            return;
+        }
+
+        const date1 = new Date(startDate);
+        const date2 = new Date(endDate);
+
+        if (date2 < date1) {
+            campaignDurationDisplay.textContent = 'Fechas inválidas';
+            totalCampaignBudgetDisplay.textContent = 'N/A'; // Or 'Fechas inválidas'
+            return;
+        }
+
+        const diffTime = Math.abs(date2 - date1);
+        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1; // Add 1 to include both start and end day
+
+        const totalBudget = dailyInvestment * diffDays;
+
+        campaignDurationDisplay.textContent = diffDays;
+        totalCampaignBudgetDisplay.textContent = totalBudget.toLocaleString('es-CO');
+    }
+
 
     marcaSelect.addEventListener('change', () => {
         const selectedBrandId = marcaSelect.value;
@@ -345,12 +636,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
         if (selectedBrandId && allBrandsData.length > 0) {
             const brand = allBrandsData.find(b => b.id === selectedBrandId);
+            // Populate products if available
             if (brand && brand.productos && brand.productos.length > 0) {
-                productSelectionContainer.style.display = 'block'; // Or 'flex' if using flexbox for layout
+                productSelectionContainer.style.display = 'block';
                 const placeholderOption = document.createElement('option');
                 placeholderOption.value = "";
-                placeholderOption.textContent = "Selecciona uno o más productos";
-                placeholderOption.disabled = true; // Keep it disabled as it's a placeholder
+                placeholderOption.textContent = "Selecciona uno o más productos (opcional)";
+                // placeholderOption.disabled = true; // Not strictly needed if it's just a label
                 productosSelect.appendChild(placeholderOption);
 
                 brand.productos.forEach(producto => {
@@ -360,14 +652,16 @@ document.addEventListener('DOMContentLoaded', () => {
                     productosSelect.appendChild(option);
                 });
             } else {
+                // No products for this brand
+                productSelectionContainer.style.display = 'block'; // Show container
                 const noProductsOption = document.createElement('option');
                 noProductsOption.value = "";
                 noProductsOption.textContent = "No hay productos para esta marca";
                 noProductsOption.disabled = true;
                 productosSelect.appendChild(noProductsOption);
-                productSelectionContainer.style.display = 'block'; // Still show, but with "no products"
             }
         } else {
+            // No brand selected
             const defaultOption = document.createElement('option');
             defaultOption.value = "";
             defaultOption.textContent = "Selecciona una marca primero...";
@@ -375,6 +669,25 @@ document.addEventListener('DOMContentLoaded', () => {
             productosSelect.appendChild(defaultOption);
             productSelectionContainer.style.display = 'none';
         }
+        updateFormAccess(); // Update access rules after brand change
+        // updateTotalAffinity(); // updateFormAccess will call it if conditions are met
+    });
+
+    productosSelect.addEventListener('change', () => {
+        updateFormAccess(); // Call after product selection changes
+        // updateTotalAffinity(); // updateFormAccess will call it
+    });
+
+    audienciaSelect.addEventListener('change', () => {
+        updateEstimatedAudienceSize(); // This now also calls updateTotalAffinity if interests are involved
+        updateAudienceDescription();
+        updateFormAccess(); // Call after audience selection changes
+        // updateTotalAffinity(); // updateFormAccess will call it
+    });
+
+    campaignGoalSelect.addEventListener('change', () => {
+        updateFormAccess(); // Call after campaign goal selection changes
+        // updateTotalAffinity(); // updateFormAccess will call it if needed (e.g. if goal affected affinity logic)
     });
 
 
@@ -403,7 +716,9 @@ document.addEventListener('DOMContentLoaded', () => {
             updateAudienceDescription();
             updateEstimatedAudienceSize();
             // Trigger change on marcaSelect to potentially populate products if a brand is pre-selected (or to set initial state)
-            marcaSelect.dispatchEvent(new Event('change'));
+            // marcaSelect.dispatchEvent(new Event('change')); // This will be handled by final updateFormAccess call
+            updateFormAccess(); // Set initial form accessibility
+            // updateTotalAffinity(); // updateFormAccess will call this if marca & audiencia are selected.
         } catch (error) {
             console.error('Error al cargar datos iniciales:', error);
             marcaSelect.innerHTML = '<option value="">Error al cargar marcas</option>';
@@ -416,6 +731,47 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // Iniciar la carga de datos
-    cargarDatosIniciales();
-    cargarIntereses(); // Cargar los intereses al iniciar (esto ya estaba, se mantiene)
+    cargarDatosIniciales().then(() => {
+        cargarIntereses().then(() => {
+            updateFormAccess();
+            updateCampaignSummary(); // Initial call to set N/A or based on defaults
+
+            if (presupuestoInput && presupuestoValueDisplay) {
+                presupuestoValueDisplay.textContent = parseInt(presupuestoInput.value, 10).toLocaleString('es-CO');
+            }
+
+            // Set min for start date and add listener for end date min
+            const today = new Date().toISOString().split('T')[0];
+            if(fechaInicioInput) fechaInicioInput.setAttribute('min', today);
+            if(fechaFinInput && fechaInicioInput.value) fechaFinInput.setAttribute('min', fechaInicioInput.value);
+
+
+        });
+    });
+
+    if (presupuestoInput) {
+        presupuestoInput.addEventListener('input', () => {
+            if(presupuestoValueDisplay) presupuestoValueDisplay.textContent = parseInt(presupuestoInput.value, 10).toLocaleString('es-CO');
+            updateCampaignSummary();
+        });
+    }
+    if (fechaInicioInput) {
+        fechaInicioInput.addEventListener('change', () => {
+            if (fechaInicioInput.value && fechaFinInput) {
+                fechaFinInput.setAttribute('min', fechaInicioInput.value);
+                if (fechaFinInput.value && fechaFinInput.value < fechaInicioInput.value) {
+                    fechaFinInput.value = ""; // Clear end date if it's now before start date
+                }
+            }
+            updateCampaignSummary();
+            updateFormAccess(); // Re-check access in case date validation affects other fields (though not currently implemented)
+        });
+    }
+    if (fechaFinInput) {
+        fechaFinInput.addEventListener('change', () => {
+            updateCampaignSummary();
+            updateFormAccess(); // Re-check access
+        });
+    }
+
 });
