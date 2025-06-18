@@ -1,26 +1,26 @@
 # programmatic_simulator/backend/data/market_data.py
 
 MARCAS_COLOMBIANAS = [
-    {"id": "marca_001", "nombre": "Bancolombia", "categoria": "Banca"},
-    {"id": "marca_002", "nombre": "Ecopetrol", "categoria": "Energía"},
-    {"id": "marca_003", "nombre": "Alpina", "categoria": "CPG"},
-    {"id": "marca_004", "nombre": "Avianca", "categoria": "Airlines"},
-    {"id": "marca_005", "nombre": "Postobón", "categoria": "CPG"},
-    {"id": "marca_006", "nombre": "Éxito", "categoria": "Retail"},
-    {"id": "marca_007", "nombre": "Claro", "categoria": "Telecom"},
-    {"id": "marca_008", "nombre": "Davivienda", "categoria": "Banca"},
-    {"id": "marca_009", "nombre": "Nutresa", "categoria": "CPG"},
-    {"id": "marca_010", "nombre": "LATAM Airlines", "categoria": "Airlines"},
-    {"id": "marca_011", "nombre": "Movistar", "categoria": "Telecom"},
-    {"id": "marca_012", "nombre": "Rappi", "categoria": "Tech"},
-    {"id": "marca_013", "nombre": "Mercado Libre", "categoria": "Tech"},
-    {"id": "marca_014", "nombre": "Cementos Argos", "categoria": "Construcción"},
-    {"id": "marca_015", "nombre": "Terpel", "categoria": "Energía"},
-    {"id": "marca_016", "nombre": "Falabella", "categoria": "Retail"},
-    {"id": "marca_017", "nombre": "Tigo", "categoria": "Telecom"},
-    {"id": "marca_018", "nombre": "Grupo Aval", "categoria": "Banca"},
-    {"id": "marca_019", "nombre": "Bavaria", "categoria": "CPG"},
-    {"id": "marca_020", "nombre": "Wingo", "categoria": "Airlines"}
+    {"id": "marca_001", "nombre": "Bancolombia", "categoria": "Banca", "productos": ["Cuenta de Ahorros", "Tarjeta de Crédito Gold", "Crédito Hipotecario"]},
+    {"id": "marca_002", "nombre": "Ecopetrol", "categoria": "Energía", "productos": ["Gasolina Corriente", "ACPM", "Petroquímicos"]},
+    {"id": "marca_003", "nombre": "Alpina", "categoria": "CPG", "productos": ["Leche Entera", "Yogurt Finesse", "Arequipe"]},
+    {"id": "marca_004", "nombre": "Avianca", "categoria": "Airlines", "productos": ["Tiquetes Nacionales", "Tiquetes Internacionales", "Programa LifeMiles"]},
+    {"id": "marca_005", "nombre": "Postobón", "categoria": "CPG", "productos": ["Gaseosa Manzana", "Agua Cristal", "Jugo Hit"]},
+    {"id": "marca_006", "nombre": "Éxito", "categoria": "Retail", "productos": ["Mercado Básico", "Electrodomésticos", "Ropa Casual"]},
+    {"id": "marca_007", "nombre": "Claro", "categoria": "Telecom", "productos": ["Plan Pospago 5G", "Internet Fibra Óptica", "Claro Video"]},
+    {"id": "marca_008", "nombre": "Davivienda", "categoria": "Banca", "productos": ["Cuenta Móvil", "Tarjeta de Crédito Diners", "Seguro de Vida"]},
+    {"id": "marca_009", "nombre": "Nutresa", "categoria": "CPG", "productos": ["Chocolatinas Jet", "Galletas Noel", "Café Sello Rojo"]},
+    {"id": "marca_010", "nombre": "LATAM Airlines", "categoria": "Airlines", "productos": ["Vuelos a Suramérica", "Paquetes Turísticos", "Transporte de Carga"]},
+    {"id": "marca_011", "nombre": "Movistar", "categoria": "Telecom", "productos": ["Plan Prepago", "Internet Hogar", "Movistar TV"]},
+    {"id": "marca_012", "nombre": "Rappi", "categoria": "Tech", "productos": ["Rappi Prime", "Entrega Restaurantes", "Rappi Favor"]},
+    {"id": "marca_013", "nombre": "Mercado Libre", "categoria": "Tech", "productos": ["Envíos Full", "Moda y Accesorios", "Tecnología"]},
+    {"id": "marca_014", "nombre": "Cementos Argos", "categoria": "Construcción", "productos": ["Cemento Gris Uso General", "Concreto Premezclado", "Soluciones Viales"]},
+    {"id": "marca_015", "nombre": "Terpel", "categoria": "Energía", "productos": ["Gasolina Extra G-Prix", "Lubricantes Mobil", "Tiendas Altoque"]},
+    {"id": "marca_016", "nombre": "Falabella", "categoria": "Retail", "productos": ["Moda Mujer", "Tecnología Apple", "Muebles y Decoración"]},
+    {"id": "marca_017", "nombre": "Tigo", "categoria": "Telecom", "productos": ["Plan Internet Residencial", "Tigo Money", "Roaming Internacional"]},
+    {"id": "marca_018", "nombre": "Grupo Aval", "categoria": "Banca", "productos": ["Crédito de Libranza", "Fondos de Inversión Colectiva", "Banca Virtual AvalPay"]},
+    {"id": "marca_019", "nombre": "Bavaria", "categoria": "CPG", "productos": ["Cerveza Aguila", "Pony Malta", "Cerveza Club Colombia"]},
+    {"id": "marca_020", "nombre": "Wingo", "categoria": "Airlines", "productos": ["Vuelos Bajo Costo Caribe", "Promociones Flash", "Equipaje Adicional"]}
 ]
 
 AUDIENCIAS_COLOMBIANAS = [
@@ -213,6 +213,17 @@ INTERESES_DETALLADOS = [
 # - MODIFICADORES_CONTEXTO (Noticias, Entretenimiento, Deportes, etc.)
 # - EVENTOS_ESPECIALES_COLOMBIA (Amor y Amistad, Navidad, Black Friday Colombia)
 
+COLOMBIAN_POPULATION_SEGMENTS = [
+    {"segment_id": "total_colombia", "nombre_segmento": "Población Total Colombia", "size": 52000000, "fuente_dato": "Estimado DANE 2023 (Placeholder)"},
+    {"segment_id": "jovenes_18_24_col", "nombre_segmento": "Jóvenes (18-24 años) Colombia", "size": 5500000, "relates_to_audience_ids": ["aud_001", "aud_008"], "fuente_dato": "Estimado (Placeholder)"},
+    {"segment_id": "profesionales_jovenes_25_34_col", "nombre_segmento": "Profesionales Jóvenes (25-34 años) Colombia", "size": 7000000, "relates_to_audience_ids": ["aud_002", "aud_003", "aud_006", "aud_014"], "fuente_dato": "Estimado (Placeholder)"},
+    {"segment_id": "familias_35_55_col", "nombre_segmento": "Familias Consolidadas (35-55 años) Colombia", "size": 10000000, "relates_to_audience_ids": ["aud_004", "aud_007", "aud_009", "aud_013"], "fuente_dato": "Estimado (Placeholder)"},
+    {"segment_id": "adultos_mayores_60_mas_col", "nombre_segmento": "Adultos Mayores (60+ años) Colombia", "size": 7500000, "relates_to_audience_ids": ["aud_005"], "fuente_dato": "Estimado (Placeholder)"},
+    {"segment_id": "norte_colombia_urbano", "nombre_segmento": "Región Norte Urbana (Barranquilla, Cartagena, Santa Marta)", "size": 4000000, "fuente_dato": "Estimado (Placeholder)"},
+    {"segment_id": "centro_colombia_urbano", "nombre_segmento": "Región Centro Urbana (Bogotá, Medellín, Cali)", "size": 15000000, "fuente_dato": "Estimado (Placeholder)"},
+    {"segment_id": "trabajadores_ingresos_medios", "nombre_segmento": "Trabajadores con Ingresos Medios (2-5 SMMLV)", "size": 12000000, "fuente_dato": "Estimado (Placeholder)"}
+]
+
 def obtener_marca_por_id(marca_id):
     for marca in MARCAS_COLOMBIANAS:
         if marca["id"] == marca_id:
@@ -275,3 +286,12 @@ def obtener_campaign_goal_por_id(goal_id):
         if goal["id"] == goal_id:
             return goal
     return None
+
+def obtener_segmento_poblacion_por_id(segment_id):
+    for segmento in COLOMBIAN_POPULATION_SEGMENTS:
+        if segmento["segment_id"] == segment_id:
+            return segmento
+    return None
+
+def obtener_todos_los_segmentos_poblacion():
+    return COLOMBIAN_POPULATION_SEGMENTS

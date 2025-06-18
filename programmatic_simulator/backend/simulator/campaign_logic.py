@@ -1,12 +1,13 @@
 # programmatic_simulator/backend/simulator/campaign_logic.py
 import random
 import math
-from data import market_data
+from ..data import market_data
 
 # --- Constantes de Simulación y Puntuación ---
-COSTO_POR_MIL_IMPRESIONES_BASE = 10000  # COP
-CTR_BASE_DEFAULT = 0.01                # Click-Through Rate base (1%)
+COSTO_POR_MIL_IMPRESIONES_BASE = 12000  # COP
+CTR_BASE_DEFAULT = 0.008               # Click-Through Rate base (0.8%)
 DEFAULT_CAMPAIGN_GOAL_ID = "traffic"   # Objetivo por defecto si no se especifica
+INTEREST_PENETRATION_ESTIMATE = 0.3    # 30% - Estimado de penetración de un interés en un segmento de audiencia
 
 # Puntuación
 PUNTUACION_INICIAL = 3.0             # Puntuación base antes de modificadores
@@ -35,8 +36,8 @@ GOAL_IMPRESSION_MODIFIERS = {
 }
 
 # Tasas base para Interacción y Conversión (estos son placeholders y muy simplificados)
-BASE_ENGAGEMENT_RATE_PER_CLICK = 0.08  # 8% de los clics generan alguna interacción base
-BASE_CONVERSION_RATE_PER_CLICK = 0.01 # 1% de los clics convierten base
+BASE_ENGAGEMENT_RATE_PER_CLICK = 0.06  # 6% de los clics generan alguna interacción base
+BASE_CONVERSION_RATE_PER_CLICK = 0.0075 # 0.75% de los clics convierten base
 
 def _normalize_text_for_matching(text):
     if not text: return ""
@@ -66,8 +67,35 @@ def simular_campana(marca_id, audiencia_id, presupuesto, selected_interes_ids=No
             "presupuesto_gastado": 0, "interest_match_score": 0, "selected_intereses_nombres": [],
             "campaign_goal_nombre": campaign_goal["nombre"] if campaign_goal else "N/A",
             "interacciones_calculadas":0, "conversiones_calculadas":0, "afinidad_marca_audiencia":0,
-            "mensajes_feedback": mensajes_feedback
+            "mensajes_feedback": mensajes_feedback,
+            "potential_audience_size_from_segment": 0, # Ensure key exists even in error
+            "refined_potential_audience_size": 0 # Ensure key exists even in error
         }
+
+    # --- Determinación del Tamaño de Audiencia Potencial por Segmento ---
+    potential_audience_size_from_segment = 20000000 # Default grande
+    all_population_segments = market_data.obtener_todos_los_segmentos_poblacion()
+    found_segment = False
+    if all_population_segments:
+        relevant_segments = [
+            seg for seg in all_population_segments
+            if audiencia["id"] in seg.get("relates_to_audience_ids", [])
+        ]
+        if relevant_segments:
+            # Usar el segmento más pequeño como el más específico
+            relevant_segments.sort(key=lambda s: s["size"])
+            potential_audience_size_from_segment = relevant_segments[0]["size"]
+            mensajes_feedback.append(f"INFO: Segmento de población '{relevant_segments[0]['nombre_segmento']}' (tamaño: {potential_audience_size_from_segment:,}) usado para estimar alcance máximo.")
+            found_segment = True
+            if potential_audience_size_from_segment < 1000000:
+                 mensajes_feedback.append("INFO: El segmento de audiencia seleccionado es bastante específico, lo que podría limitar el alcance máximo.")
+        else:
+            # Si no hay segmento directo, usar una porción de la población total si está disponible
+            total_col_segment = next((s for s in all_population_segments if s["segment_id"] == "total_colombia"), None)
+            if total_col_segment:
+                potential_audience_size_from_segment = int(total_col_segment["size"] * 0.25) # Estimación general
+                mensajes_feedback.append(f"INFO: No se encontró un segmento de población directamente relacionado. Usando estimación basada en población total ({potential_audience_size_from_segment:,}).")
+
 
     puntuacion_actual = PUNTUACION_INICIAL
     afinidad_marca_audiencia = audiencia["afinidad_marca_categoria"].get(marca["categoria"], 0.05)
@@ -145,6 +173,19 @@ def simular_campana(marca_id, audiencia_id, presupuesto, selected_interes_ids=No
     factor_alcance_efectivo = efectividad_targeting_combinada * 0.7 + 0.2
     if presupuesto > PRESUPUESTO_ALTO: factor_alcance_efectivo = min(1.0, factor_alcance_efectivo * 1.1)
     impresiones_efectivas = int(impresiones_posibles_brutas * factor_alcance_efectivo * impresion_goal_modifier)
+
+    # --- Refinar Audiencia por Intereses y Limitar Impresiones por Población ---
+    if num_selected_intereses > 0:
+        # Aplicar reducción por cada capa de interés (placeholder)
+        refined_potential_audience_size = potential_audience_size_from_segment * (INTEREST_PENETRATION_ESTIMATE ** (num_selected_intereses * 0.5))
+        refined_potential_audience_size = max(1000, int(refined_potential_audience_size)) # Mínimo 1000 personas
+    else:
+        refined_potential_audience_size = potential_audience_size_from_segment
+
+    if impresiones_efectivas > refined_potential_audience_size:
+        impresiones_efectivas = refined_potential_audience_size
+        mensajes_feedback.append("INFO: El alcance de la campaña (impresiones) ha sido limitado por el tamaño estimado del segmento de audiencia y los intereses seleccionados.")
+
     impresiones_efectivas = max(0, impresiones_efectivas)
 
     ctr_actual = CTR_BASE_DEFAULT * GOAL_CTR_MODIFIERS.get(campaign_goal["id"], 1.0)
@@ -156,14 +197,27 @@ def simular_campana(marca_id, audiencia_id, presupuesto, selected_interes_ids=No
     interacciones_calculadas = 0
     conversiones_calculadas = 0
     if campaign_goal["id"] == "engagement":
-        engagement_rate = BASE_ENGAGEMENT_RATE_PER_CLICK + (afinidad_marca_audiencia * 0.1) + (interest_match_score * 0.15)
+        # Nueva fórmula de engagement_rate
+        engagement_rate = BASE_ENGAGEMENT_RATE_PER_CLICK * \
+                          (1 + (afinidad_marca_audiencia * 0.5) + \
+                           (interest_match_score * 0.75) + \
+                           (GOAL_CTR_MODIFIERS.get(campaign_goal["id"], 1.0) - 1.0) * 0.5)
         interacciones_calculadas = int(clics * engagement_rate * random.uniform(0.8, 1.2))
     elif campaign_goal["id"] == "conversion":
-        conversion_rate = BASE_CONVERSION_RATE_PER_CLICK + \
-                          (afinidad_marca_audiencia * 0.02 * (1 + (afinidad_marca_audiencia*2))) + \
-                          (interest_match_score * 0.03 * (1 + (interest_match_score*2)))
-        if efectividad_targeting_combinada < 0.3: conversion_rate *= 0.3
-        elif efectividad_targeting_combinada < 0.5: conversion_rate *= 0.6
+        # Nueva fórmula de conversion_rate
+        conversion_rate_base_multiplier = 1.0
+        if campaign_goal["id"] == "conversion": conversion_rate_base_multiplier = 1.5 # Stronger push for conversion goal
+
+        conversion_rate = BASE_CONVERSION_RATE_PER_CLICK * conversion_rate_base_multiplier
+        conversion_rate *= (1 + (afinidad_marca_audiencia * 0.8) + (interest_match_score * 1.2)) # Affinity and interest match have strong impact
+
+        if afinidad_marca_audiencia < 0.3:
+            conversion_rate *= 0.4
+        if interest_match_score < 0.3 and num_selected_intereses > 0:
+            conversion_rate *= 0.4
+        elif efectividad_targeting_combinada < 0.5: # General poor targeting (catches cases where one is low but not both, or no interests)
+             conversion_rate *= 0.7
+
         conversiones_calculadas = int(clics * conversion_rate * random.uniform(0.7, 1.3))
         conversiones_calculadas = max(0, conversiones_calculadas)
 
@@ -177,9 +231,24 @@ def simular_campana(marca_id, audiencia_id, presupuesto, selected_interes_ids=No
         if presupuesto > PRESUPUESTO_BAJO and clics < clics_esperados_min_por_millon_presupuesto * (presupuesto/1000000):
             puntos_objetivo -= 0.5
     elif campaign_goal["id"] == "awareness":
-        if impresiones_efectivas >= impresiones_posibles_brutas * 0.6: puntos_objetivo += MAX_PUNTOS_POR_FACTOR
-        elif impresiones_efectivas >= impresiones_posibles_brutas * 0.3: puntos_objetivo += MAX_PUNTOS_POR_FACTOR / 2
-        else: puntos_objetivo -= MAX_PUNTOS_POR_FACTOR
+        reach_percentage_of_potential = impresiones_efectivas / refined_potential_audience_size if refined_potential_audience_size > 0 else 0
+        if reach_percentage_of_potential >= 0.7 and impresiones_efectivas > refined_potential_audience_size * 0.1: # Asegurar que no es un % alto de un número muy pequeño de impresiones
+            puntos_objetivo += MAX_PUNTOS_POR_FACTOR
+        elif reach_percentage_of_potential >= 0.4 and impresiones_efectivas > refined_potential_audience_size * 0.05:
+            puntos_objetivo += MAX_PUNTOS_POR_FACTOR / 2
+        else:
+            puntos_objetivo -= MAX_PUNTOS_POR_FACTOR / 2 # Penalización más suave que antes si no se alcanza buen %
+
+        # Bonus/Penalización por presupuesto vs alcance potencial
+        # Estimación de impresiones máximas que el presupuesto podría comprar (sin considerar efectividad de targeting aún)
+        max_impressions_budget_could_buy = (presupuesto / COSTO_POR_MIL_IMPRESIONES_BASE) * 1000
+        if max_impressions_budget_could_buy > refined_potential_audience_size * 1.5 and reach_percentage_of_potential < 0.5:
+            puntos_objetivo -= 0.5 # Penalize if budget was high but reach was low relative to potential
+            mensajes_feedback.append("INFO: El presupuesto parecía suficiente para un mayor alcance del segmento potencial. La segmentación o el atractivo de la campaña podrían haber limitado las impresiones.")
+        elif max_impressions_budget_could_buy < refined_potential_audience_size * 0.5 and reach_percentage_of_potential > 0.3:
+            puntos_objetivo += 0.5 # Bonus if budget was low but still achieved decent relative reach
+            mensajes_feedback.append("INFO: Buen aprovechamiento del presupuesto para alcanzar un porcentaje considerable del segmento potencial.")
+
     elif campaign_goal["id"] == "engagement":
         if clics > 0 :
             tasa_interaccion_efectiva = interacciones_calculadas / clics
@@ -277,6 +346,8 @@ def simular_campana(marca_id, audiencia_id, presupuesto, selected_interes_ids=No
         "interest_match_score": round(interest_match_score, 3),
         "selected_intereses_nombres": selected_intereses_nombres,
         "mensajes_feedback": mensajes_feedback,
+        "potential_audience_size_from_segment": potential_audience_size_from_segment,
+        "refined_potential_audience_size": refined_potential_audience_size,
         "mensaje": f"Campaña para {marca['nombre']} ({marca['categoria']}) con objetivo '{campaign_goal['nombre']}', dirigida a {audiencia['nombre']}."
     }
 
