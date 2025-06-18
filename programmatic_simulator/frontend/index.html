@@ -26,6 +26,20 @@
             </div>
 
             <div class="form-group">
+                <label for="intereses">Selecciona Intereses (opcional):</label>
+                <select id="intereses" name="intereses" multiple>
+                    <option value="" disabled>Cargando intereses...</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label for="campaignGoal">Objetivo de la Campaña:</label>
+                <select id="campaignGoal" name="campaignGoal" required>
+                    <option value="">Cargando objetivos...</option>
+                </select>
+            </div>
+
+            <div class="form-group">
                 <label for="presupuesto">Presupuesto (COP):</label>
                 <input type="number" id="presupuesto" name="presupuesto" min="10000" step="1000" value="100000" required>
             </div>
@@ -37,15 +51,30 @@
             <h2>Resultados de la Simulación</h2>
             <p><strong>Marca:</strong> <span id="resMarca"></span></p>
             <p><strong>Audiencia:</strong> <span id="resAudiencia"></span></p>
+            <p><strong>Objetivo de Campaña:</strong> <span id="resCampaignGoal"></span></p>
             <p><strong>Presupuesto Inicial (COP):</strong> <span id="resPresupuestoInicial"></span></p>
             <hr>
             <p class="score"><strong>Puntuación de la Campaña:</strong> <span id="resPuntuacion"></span> / 10</p>
+            <p><strong>Afinidad Marca-Audiencia:</strong> <span id="resAfinidad"></span></p>
+            <p><strong>Coincidencia de Intereses:</strong> <span id="resMatchIntereses"></span></p>
+            <p><strong>Intereses Seleccionados:</strong> <span id="resInteresesSeleccionados"></span></p>
             <hr>
             <p><strong>Impresiones Estimadas:</strong> <span id="resImpresiones"></span></p>
             <p><strong>Clics Estimados:</strong> <span id="resClics"></span></p>
+            <p><strong>CTR Calculado:</strong> <span id="resCTR"></span>%</p>
+            <p><strong>Interacciones Estimadas:</strong> <span id="resInteracciones"></span></p>
+            <p><strong>Conversiones Estimadas:</strong> <span id="resConversiones"></span></p>
             <p><strong>CPM Calculado (COP):</strong> <span id="resCPM"></span></p>
             <p><strong>CPC Calculado (COP):</strong> <span id="resCPC"></span></p>
             <p><strong>Presupuesto Gastado (COP):</strong> <span id="resPresupuestoGastado"></span></p>
+
+            <div id="detailedFeedbackSection" style="display:none; margin-top: 15px;">
+                <hr>
+                <h4>Sugerencias y Comentarios Detallados:</h4>
+                <ul id="feedbackList" class="feedback-list">
+                    <!-- Feedback messages will be populated here by JavaScript -->
+                </ul>
+            </div>
             <hr>
             <p><em><span id="resMensaje"></span></em></p>
         </div>
