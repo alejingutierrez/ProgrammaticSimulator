@@ -12,7 +12,11 @@
         <h1>Simulador de Campañas Programáticas</h1>
 
         <div id="estimatedAudienceSizeContainer">
-            <p>Estimated Targetable Audience: <span id="estimatedAudienceDisplay">N/A</span></p>
+            <p>Estimated Targetable Audience: <span id="estimatedAudienceDisplay">N/A</span> <span id="audienceSizeChangeIndicator"></span></p>
+        </div>
+
+        <div id="totalAffinityContainer" style="margin-top: 10px; margin-bottom: 10px;">
+            <p>Total Estimated Affinity: <span id="totalAffinityDisplay">N/A</span></p>
         </div>
 
         <form id="campaignForm">
@@ -25,7 +29,7 @@
 
             <div class="form-group">
                 <label for="audiencia">Selecciona una Audiencia:</label>
-                <select id="audiencia" name="audiencia" required>
+                <select id="audiencia" name="audiencia" required disabled>
                     <option value="">Cargando audiencias...</option>
                 </select>
                 <div id="audienceDescriptionContainer">
@@ -35,28 +39,44 @@
 
             <div class="form-group" id="productSelectionContainer" style="display:none;">
                 <label for="productos">Selecciona Productos (opcional):</label>
-                <select id="productos" name="productos" multiple>
+                <select id="productos" name="productos" multiple disabled>
                     <option value="" disabled>Selecciona una marca primero...</option>
                 </select>
             </div>
 
             <div class="form-group">
                 <label for="interesesCheckboxContainer">Selecciona Intereses (opcional):</label>
-                <div id="interesesCheckboxContainer" class="checkbox-container">
+                <div id="interesesCheckboxContainer" class="checkbox-container disabled-selection-area">
                     <!-- Checkboxes will be populated here by JavaScript -->
                 </div>
             </div>
 
             <div class="form-group">
                 <label for="campaignGoal">Objetivo de la Campaña:</label>
-                <select id="campaignGoal" name="campaignGoal" required>
+                <select id="campaignGoal" name="campaignGoal" required disabled>
                     <option value="">Cargando objetivos...</option>
                 </select>
             </div>
 
             <div class="form-group">
-                <label for="presupuesto">Presupuesto (COP):</label>
-                <input type="number" id="presupuesto" name="presupuesto" min="10000" step="1000" value="100000" required>
+                <label for="presupuesto">Inversión por día (COP): <span id="presupuestoValueDisplay">100000</span></label>
+                <input type="range" id="presupuesto" name="presupuesto" min="10000" max="5000000" step="1000" value="100000" required disabled>
+            </div>
+
+            <div class="form-group">
+                <label for="fechaInicio">Fecha de inicio:</label>
+                <input type="date" id="fechaInicio" name="fechaInicio" required disabled>
+            </div>
+
+            <div class="form-group">
+                <label for="fechaFin">Fecha de fin:</label>
+                <input type="date" id="fechaFin" name="fechaFin" required disabled>
+            </div>
+
+            <div id="campaignSummaryContainer" style="margin-top: 10px; padding: 10px; background-color: #f0f0f0; border-radius: 5px;">
+                <h4>Resumen de Campaña Estimado:</h4>
+                <p>Duración de la campaña: <span id="campaignDurationDisplay">N/A</span> días</p>
+                <p>Presupuesto total estimado: <span id="totalCampaignBudgetDisplay">N/A</span> COP</p>
             </div>
 
             <button type="submit">Simular Campaña</button>
@@ -68,7 +88,9 @@
             <p><strong>Audiencia:</strong> <span id="resAudiencia"></span></p>
             <p><strong>Productos Seleccionados:</strong> <span id="resProductosSeleccionados"></span></p>
             <p><strong>Objetivo de Campaña:</strong> <span id="resCampaignGoal"></span></p>
-            <p><strong>Presupuesto Inicial (COP):</strong> <span id="resPresupuestoInicial"></span></p>
+            <p><strong>Inversión por día (COP):</strong> <span id="resInversionPorDia"></span></p>
+            <p><strong>Duración de la campaña:</strong> <span id="resDuracionCampana"></span> días</p>
+            <p><strong>Presupuesto Total Estimado (COP):</strong> <span id="resPresupuestoInicial"></span></p>
             <hr>
             <p class="score"><strong>Puntuación de la Campaña:</strong> <span id="resPuntuacion"></span> / 10</p>
             <p><strong>Afinidad Marca-Audiencia:</strong> <span id="resAfinidad"></span></p>

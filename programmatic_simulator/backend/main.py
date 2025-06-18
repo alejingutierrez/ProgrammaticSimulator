@@ -1,7 +1,7 @@
 # programmatic_simulator/backend/main.py
 from flask import Flask, request, jsonify
 from flask_cors import CORS # Importar CORS
-from simulator.campaign_logic import simular_campana, _calculate_audience_size_details # Importar la nueva función
+from simulator.campaign_logic import simular_campana, _calculate_audience_size_details, calculate_total_affinity # Importar la nueva función
 from data.market_data import MARCAS_COLOMBIANAS, AUDIENCIAS_COLOMBIANAS, obtener_todos_los_intereses, obtener_todos_los_campaign_goals, obtener_marca_por_id # Importar obtener_marca_por_id
 
 app = Flask(__name__)
@@ -40,11 +40,13 @@ def api_simular_campana():
 
     marca_id = data.get('marcaId')
     audiencia_id = data.get('audienciaId')
-    presupuesto_str = data.get('presupuesto')
+    presupuesto_str = data.get('presupuesto') # This is now total_budget from frontend
     selected_interes_ids = data.get('selectedInteresIds', [])
-    campaign_goal_id = data.get('campaignGoalId', None) # Nuevo: obtener ID del objetivo de campaña
+    campaign_goal_id = data.get('campaignGoalId', None)
+    selected_product_ids = data.get('selected_product_ids', []) # Get selected product IDs
+    campaign_duration_days = data.get('campaignDurationDays', None) # Get campaign duration
 
-    if not marca_id or not audiencia_id or not presupuesto_str:
+    if not marca_id or not audiencia_id or not presupuesto_str: # campaign_duration_days is optional for now from backend view
         return jsonify({"error": "Faltan datos: marcaId, audienciaId o presupuesto son requeridos."}), 400
 
     try:
@@ -56,11 +58,13 @@ def api_simular_campana():
 
     # Llamada a la lógica de simulación actualizada con el objetivo de campaña
     resultado_simulacion = simular_campana(
-        marca_id,
-        audiencia_id,
-        presupuesto,
-        selected_interes_ids,
-        campaign_goal_id
+        marca_id=marca_id,
+        audiencia_id=audiencia_id,
+        presupuesto=presupuesto, # This is total_budget
+        selected_interes_ids=selected_interes_ids,
+        campaign_goal_id=campaign_goal_id,
+        selected_product_ids=selected_product_ids, # Pass product IDs
+        campaign_duration_days=campaign_duration_days # Pass duration
     )
 
     if resultado_simulacion.get("error"):
@@ -106,3 +110,35 @@ def get_products_by_brand(brand_id):
         return jsonify(marca.get("productos", []))
     else:
         return jsonify({"error": "Brand not found"}), 404
+
+@app.route('/api/calculate-affinity', methods=['POST'])
+def api_calculate_total_affinity():
+    data = request.get_json()
+
+    if not data:
+        return jsonify({"error": "No data provided."}), 400
+
+    marca_id = data.get('marcaId')
+    audiencia_id = data.get('audienciaId')
+
+    if not marca_id or not audiencia_id:
+        return jsonify({"error": "marcaId and audienciaId are required."}), 400
+
+    selected_interes_ids = data.get('selectedInteresIds', [])
+    selected_product_ids = data.get('selectedProductIds', [])
+
+    affinity_results = calculate_total_affinity(
+        marca_id=marca_id,
+        audiencia_id=audiencia_id,
+        selected_interes_ids=selected_interes_ids,
+        selected_product_ids=selected_product_ids
+    )
+
+    if affinity_results.get("error"):
+        # Determine status code based on error message or keep it generic
+        # For "not found" errors from calculate_total_affinity, 404 is appropriate.
+        # Other errors might be 400 if they relate to bad input not caught above.
+        status_code = 404 if "no encontrada" in affinity_results["error"] else 400
+        return jsonify(affinity_results), status_code
+
+    return jsonify(affinity_results), 200

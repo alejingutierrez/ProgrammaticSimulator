@@ -116,7 +116,101 @@ def _normalize_text_for_matching(text):
         text = text.replace(accented, unaccented)
     return " ".join(text.split()) # Collapse multiple spaces and strip leading/trailing
 
-def simular_campana(marca_id, audiencia_id, presupuesto, selected_interes_ids=None, campaign_goal_id=None, selected_product_ids=None): # Added selected_product_ids
+
+def calculate_total_affinity(marca_id, audiencia_id, selected_interes_ids=None, selected_product_ids=None):
+    marca = market_data.obtener_marca_por_id(marca_id)
+    audiencia = market_data.obtener_audiencia_por_id(audiencia_id)
+
+    if not marca:
+        return {"error": f"Marca con ID '{marca_id}' no encontrada.", "overall_affinity": 0, "afinidad_marca_audiencia": 0, "interest_match_score": 0}
+    if not audiencia:
+        return {"error": f"Audiencia con ID '{audiencia_id}' no encontrada.", "overall_affinity": 0, "afinidad_marca_audiencia": 0, "interest_match_score": 0}
+
+    # --- Cálculo de Afinidad Marca-Audiencia (con posible sobreescritura por producto) ---
+    afinidad_marca_audiencia_component = 0.0 # Initialize
+    afinidad_calculada_por_producto = False
+
+    if selected_product_ids and marca and audiencia:
+        product_affinities_for_audience = []
+        for prod_id in selected_product_ids:
+            producto_encontrado = None
+            for p in marca.get("productos", []):
+                if p["id"] == prod_id:
+                    producto_encontrado = p
+                    break
+
+            if producto_encontrado:
+                if audiencia_id in producto_encontrado.get("afinidad_audiencia", {}):
+                    product_affinities_for_audience.append(producto_encontrado["afinidad_audiencia"][audiencia_id])
+
+        if product_affinities_for_audience:
+            afinidad_marca_audiencia_component = sum(product_affinities_for_audience) / len(product_affinities_for_audience)
+            afinidad_calculada_por_producto = True
+
+    if not afinidad_calculada_por_producto:
+        marca_categoria = marca.get("categoria") if marca else None
+        if audiencia and marca_categoria:
+            afinidad_marca_audiencia_component = audiencia.get("afinidad_marca_categoria", {}).get(marca_categoria, 0.05)
+        elif audiencia and not marca_categoria:
+            afinidad_marca_audiencia_component = 0.05
+        else:
+            afinidad_marca_audiencia_component = 0.05
+
+    afinidad_marca_audiencia_component = float(afinidad_marca_audiencia_component)
+
+    # --- Cálculo de Interest Match Score ---
+    interest_match_score_component = 0.0
+    num_selected_intereses = len(selected_interes_ids) if selected_interes_ids else 0
+
+    if num_selected_intereses > 0:
+        total_interest_affinity_score = 0.0
+        num_relevant_interests = 0
+
+        for interes_id in selected_interes_ids:
+            interes_obj = market_data.obtener_interes_por_id(interes_id)
+            if interes_obj:
+                num_relevant_interests += 1
+                current_interest_score = 0.1  # Default low score
+
+                product_affinity_found_for_this_interest = False
+                if selected_product_ids:
+                    if "afinidad_producto" in interes_obj and isinstance(interes_obj["afinidad_producto"], dict):
+                        matched_product_scores = []
+                        for prod_id in selected_product_ids:
+                            if prod_id in interes_obj["afinidad_producto"]:
+                                matched_product_scores.append(float(interes_obj["afinidad_producto"][prod_id]))
+                        if matched_product_scores:
+                            current_interest_score = sum(matched_product_scores) / len(matched_product_scores)
+                            product_affinity_found_for_this_interest = True
+
+                if not product_affinity_found_for_this_interest:
+                    if "afinidad_marca" in interes_obj and isinstance(interes_obj["afinidad_marca"], dict):
+                        if marca_id in interes_obj["afinidad_marca"]:
+                            current_interest_score = float(interes_obj["afinidad_marca"][marca_id])
+
+                total_interest_affinity_score += current_interest_score
+
+        if num_relevant_interests > 0:
+            interest_match_score_component = total_interest_affinity_score / num_relevant_interests
+        else:
+            interest_match_score_component = 0.1 # Fallback if IDs provided but none found
+    else: # No selected_interes_ids
+        interest_match_score_component = 0.3 # Default for campaigns without specific interest targeting
+
+    interest_match_score_component = float(interest_match_score_component)
+
+    # --- Calculate Overall Affinity ---
+    overall_affinity = (afinidad_marca_audiencia_component + interest_match_score_component) / 2.0
+    overall_affinity = max(0.0, min(1.0, overall_affinity))
+
+    return {
+        "overall_affinity": round(overall_affinity, 3),
+        "afinidad_marca_audiencia": round(afinidad_marca_audiencia_component, 3),
+        "interest_match_score": round(interest_match_score_component, 3)
+    }
+
+
+def simular_campana(marca_id, audiencia_id, presupuesto, selected_interes_ids=None, campaign_goal_id=None, selected_product_ids=None, campaign_duration_days=None):
     marca = market_data.obtener_marca_por_id(marca_id)
     audiencia = market_data.obtener_audiencia_por_id(audiencia_id)
 
@@ -126,6 +220,34 @@ def simular_campana(marca_id, audiencia_id, presupuesto, selected_interes_ids=No
         campaign_goal = market_data.obtener_campaign_goal_por_id(DEFAULT_CAMPAIGN_GOAL_ID)
 
     mensajes_feedback = [] # Initialize messages for simular_campana
+
+    if campaign_duration_days:
+        try:
+            # Ensure campaign_duration_days is an int for calculations if it comes as string/float
+            duration_days_int = int(campaign_duration_days)
+            mensajes_feedback.append(f"INFO: La campaña está configurada para una duración de {duration_days_int} día(s).")
+
+            # Calculate equivalent monthly budget for comparison thresholds
+            # If campaign is 15 days, its budget is compared as if it were for 30 days (budget * 2)
+            # If campaign is 60 days, its budget is compared as if it were for 30 days (budget / 2)
+            # This helps normalize budget perception against thresholds like PRESUPUESTO_ALTO/BAJO which are implicitly for a typical month.
+            # Or, more simply, calculate a daily budget and compare that.
+            # Daily budget = presupuesto / duration_days_int
+            # Threshold daily high = PRESUPUESTO_ALTO / 30
+            # Threshold daily low = PRESUPUESTO_BAJO / 30
+
+            if duration_days_int > 0: # Avoid division by zero
+                daily_budget = presupuesto / duration_days_int
+                threshold_daily_high = PRESUPUESTO_ALTO / 30
+                threshold_daily_low = PRESUPUESTO_MINIMO_IMPACTO / 30 # Use MINIMO_IMPACTO for "too low" daily check
+
+                if duration_days_int > 30 and daily_budget < threshold_daily_low * 1.5: # Extended campaign, low daily budget
+                    mensajes_feedback.append(f"SUGERENCIA: Para una campaña larga ({duration_days_int} días), el presupuesto diario ({daily_budget:,.0f} COP) parece bajo para mantener una presencia efectiva y constante.")
+                elif duration_days_int < 7 and daily_budget > threshold_daily_high * 0.75: # Short campaign, high daily budget
+                    mensajes_feedback.append(f"INFO: El presupuesto diario ({daily_budget:,.0f} COP) es considerable para una campaña corta ({duration_days_int} días), lo que podría permitir una alta intensidad.")
+        except ValueError:
+            mensajes_feedback.append(f"WARNING: Duración de campaña '{campaign_duration_days}' no es un número válido.")
+
 
     # --- Obtener detalles del tamaño de la audiencia ---
     audience_size_details = _calculate_audience_size_details(audiencia_id, selected_interes_ids)
@@ -161,124 +283,72 @@ def simular_campana(marca_id, audiencia_id, presupuesto, selected_interes_ids=No
 
     puntuacion_actual = PUNTUACION_INICIAL
 
-    # --- Cálculo de Afinidad Marca-Audiencia (con posible sobreescritura por producto) ---
-    afinidad_calculada_por_producto = False
-    if selected_product_ids and marca and audiencia:
-        product_affinities_for_audience = []
-        for prod_id in selected_product_ids:
-            producto_encontrado = None
-            for p in marca.get("productos", []): # Productos are now dicts
-                if p["id"] == prod_id:
-                    producto_encontrado = p
-                    break
+    # --- Cálculo de Afinidad Marca-Audiencia y de Intereses ---
+    # Utilizar la nueva función para obtener los componentes de afinidad
+    affinity_data = calculate_total_affinity(marca_id, audiencia_id, selected_interes_ids, selected_product_ids)
 
-            if producto_encontrado:
-                # Check 'afinidad_audiencia' within the product for the current audiencia_id
-                if audiencia_id in producto_encontrado.get("afinidad_audiencia", {}):
-                    product_affinities_for_audience.append(producto_encontrado["afinidad_audiencia"][audiencia_id])
+    if "error" in affinity_data:
+        # Si calculate_total_affinity devuelve un error (e.g., marca o audiencia no encontrada),
+        # se podría propagar este error o manejarlo como un caso de muy baja afinidad.
+        # Por simplicidad aquí, asumimos que las verificaciones previas de marca y audiencia
+        # en simular_campana ya han ocurrido o que el error es crítico.
+        # O, podríamos usar los valores de afinidad 0 que devuelve en caso de error.
+        # Este path debería ser raro si marca/audiencia ya fueron validados.
+         return { "error": affinity_data["error"], "puntuacion": 0, "impresiones": 0, "clics": 0,
+                 "mensajes_feedback": [affinity_data["error"]],
+                 "potential_audience_size_from_segment": potential_audience_size_from_segment,
+                 "refined_potential_audience_size": refined_potential_audience_size}
 
-        if product_affinities_for_audience:
-            afinidad_marca_audiencia = sum(product_affinities_for_audience) / len(product_affinities_for_audience)
-            afinidad_calculada_por_producto = True
-            mensajes_feedback.append(f"INFO: Afinidad calculada ({afinidad_marca_audiencia:.2f}) basada en el promedio de {len(product_affinities_for_audience)} producto(s) seleccionados.")
-        else:
-            mensajes_feedback.append("INFO: No se encontraron afinidades específicas para los productos seleccionados y la audiencia. Usando afinidad de marca-categoría.")
 
-    if not afinidad_calculada_por_producto:
-        # Fallback to brand-category affinity if not calculated by product
-        # Made access to audiencia["afinidad_marca_categoria"] and marca["categoria"] safer with .get()
-        marca_categoria = marca.get("categoria") if marca else None
-        if audiencia and marca_categoria:
-            afinidad_marca_audiencia = audiencia.get("afinidad_marca_categoria", {}).get(marca_categoria, 0.05)
-            mensajes_feedback.append(f"INFO: Afinidad calculada ({afinidad_marca_audiencia:.2f}) basada en la categoría de la marca '{marca_categoria}'.")
-        elif audiencia and not marca_categoria: # Marca object exists but has no categoria field
-            afinidad_marca_audiencia = 0.05 # Default if no category
-            mensajes_feedback.append(f"INFO: Marca '{marca.get('nombre', 'Desconocida')}' no tiene categoría definida. Usando afinidad base ({afinidad_marca_audiencia:.2f}).")
-        else: # Fallback if audiencia or marca objects are missing (should be caught earlier, but for safety)
-            afinidad_marca_audiencia = 0.05
-            mensajes_feedback.append(f"INFO: No se pudo determinar la afinidad por categoría de marca (datos incompletos). Usando afinidad base ({afinidad_marca_audiencia:.2f}).")
+    afinidad_marca_audiencia = affinity_data["afinidad_marca_audiencia"]
+    interest_match_score = affinity_data["interest_match_score"]
 
-    # Ensure afinidad_marca_audiencia is a float if it was not set by product affinity path
-    afinidad_marca_audiencia = float(afinidad_marca_audiencia)
+    # Generar feedback para afinidad marca-audiencia (similar a como estaba antes)
+    if afinidad_marca_audiencia >= 0.7:
+        mensajes_feedback.append(f"INFO: Afinidad marca-audiencia calculada: {afinidad_marca_audiencia:.2f} (Alta).")
+    elif afinidad_marca_audiencia >=0.4:
+        mensajes_feedback.append(f"INFO: Afinidad marca-audiencia calculada: {afinidad_marca_audiencia:.2f} (Moderada).")
+    else:
+        mensajes_feedback.append(f"INFO: Afinidad marca-audiencia calculada: {afinidad_marca_audiencia:.2f} (Baja).")
 
+    # Scoring para afinidad_marca_audiencia
     if afinidad_marca_audiencia >= 0.7: puntuacion_actual += BONUS_BUEN_TARGETING
     elif afinidad_marca_audiencia >= 0.4: puntuacion_actual += (BONUS_BUEN_TARGETING / 2)
     elif afinidad_marca_audiencia < 0.2: puntuacion_actual += PENALIDAD_FUERTE_TARGETING
     else: puntuacion_actual += PENALIDAD_SUAVE_TARGETING
 
     selected_intereses_nombres = []
-    num_selected_intereses = len(selected_interes_ids) if selected_interes_ids else 0
-    interest_match_score = 0.0
-
-    if num_selected_intereses > 0:
-        total_interest_affinity_score = 0.0
-        num_relevant_interests = 0 # Count interests that are found, even if no specific affinity
-
+    if selected_interes_ids: # Poblar nombres si hay IDs
         for interes_id in selected_interes_ids:
             interes_obj = market_data.obtener_interes_por_id(interes_id)
             if interes_obj:
                 selected_intereses_nombres.append(interes_obj["nombre"])
-                num_relevant_interests += 1
-                current_interest_score = 0.1  # Default low score for a found interest
+            # No es necesario añadir "WARNING" aquí si el interés no se encuentra,
+            # ya que calculate_total_affinity ya maneja la lógica de afinidad con los intereses existentes.
 
-                # 1. Product Affinity Check
-                product_affinity_found_for_this_interest = False
-                if selected_product_ids:
-                    if "afinidad_producto" in interes_obj and isinstance(interes_obj["afinidad_producto"], dict):
-                        matched_product_scores = []
-                        for prod_id in selected_product_ids:
-                            if prod_id in interes_obj["afinidad_producto"]:
-                                matched_product_scores.append(float(interes_obj["afinidad_producto"][prod_id]))
+    num_selected_intereses = len(selected_interes_ids) if selected_interes_ids else 0 # Recalcular para lógica de scoring
 
-                        if matched_product_scores:
-                            current_interest_score = sum(matched_product_scores) / len(matched_product_scores)
-                            product_affinity_found_for_this_interest = True
-                            mensajes_feedback.append(f"INFO: Interés '{interes_obj['nombre']}' tiene afinidad de producto promedio de {current_interest_score:.2f} con los productos seleccionados.")
-
-                # 2. Brand Affinity Check (if no product affinity was found/applied for this interest)
-                if not product_affinity_found_for_this_interest:
-                    if "afinidad_marca" in interes_obj and isinstance(interes_obj["afinidad_marca"], dict):
-                        if marca_id in interes_obj["afinidad_marca"]:
-                            current_interest_score = float(interes_obj["afinidad_marca"][marca_id])
-                            mensajes_feedback.append(f"INFO: Interés '{interes_obj['nombre']}' tiene afinidad de marca de {current_interest_score:.2f} con '{marca['nombre']}'.")
-                        # else: # No specific brand affinity for this interest with the campaign's brand
-                            # current_interest_score remains 0.1 (default)
-                            # mensajes_feedback.append(f"INFO: Interés '{interes_obj['nombre']}' no tiene afinidad específica con la marca '{marca['nombre']}', usando score base {current_interest_score:.2f}.")
-                    # else: # No afinnidad_marca field or not a dict
-                        # current_interest_score remains 0.1 (default)
-                        # mensajes_feedback.append(f"INFO: Interés '{interes_obj['nombre']}' no tiene datos de afinidad de marca, usando score base {current_interest_score:.2f}.")
-
-                total_interest_affinity_score += current_interest_score
-            else:
-                mensajes_feedback.append(f"WARNING: Interés ID '{interes_id}' no encontrado en los datos del mercado.")
-
-        if num_relevant_interests > 0:
-            interest_match_score = total_interest_affinity_score / num_relevant_interests
-            mensajes_feedback.append(f"INFO: Puntuación de afinidad de intereses calculada: {interest_match_score:.2f} (promedio de {num_relevant_interests} intereses relevantes).")
-        else: # selected_interes_ids was not empty, but none were valid/found
-            interest_match_score = 0.1
-            mensajes_feedback.append("WARNING: Se proporcionaron IDs de interés, pero ninguno fue encontrado. Usando puntuación de afinidad de interés baja (0.1).")
-    else: # No selected_interes_ids
-        interest_match_score = 0.3 # Default for campaigns without specific interest targeting
-        mensajes_feedback.append("INFO: No se seleccionaron intereses. Usando puntuación de afinidad de interés base (0.3).")
-
-    # Ensure interest_match_score is float
-    interest_match_score = float(interest_match_score)
-
-    # Scoring based on the new interest_match_score (affinity with brand/product)
-    if num_selected_intereses > 0: # Apply bonus/penalty only if interests were part of the strategy
+    # Generar feedback para interest_match_score (similar a como estaba antes)
+    if num_selected_intereses > 0:
+        mensajes_feedback.append(f"INFO: Puntuación de afinidad de intereses calculada: {interest_match_score:.2f}.")
         if interest_match_score >= 0.7:
-            puntuacion_actual += BONUS_BUEN_TARGETING
             mensajes_feedback.append(f"POSITIVO: La afinidad de los intereses seleccionados con la marca/productos es muy alta ({interest_match_score:.2f}).")
         elif interest_match_score >= 0.4:
-            puntuacion_actual += (BONUS_BUEN_TARGETING / 2)
             mensajes_feedback.append(f"INFO: La afinidad de los intereses seleccionados con la marca/productos es moderada ({interest_match_score:.2f}).")
-        elif interest_match_score < 0.15: # Very low affinity
-            puntuacion_actual += PENALIDAD_FUERTE_TARGETING
+        elif interest_match_score < 0.15:
             mensajes_feedback.append(f"ALERTA: La afinidad de los intereses seleccionados con la marca/productos es críticamente baja ({interest_match_score:.2f}).")
-        else: # Low to moderate-low affinity (0.15 to 0.39)
-            puntuacion_actual += PENALIDAD_SUAVE_TARGETING
+        else:
             mensajes_feedback.append(f"SUGERENCIA: La afinidad de los intereses seleccionados con la marca/productos es baja ({interest_match_score:.2f}).")
+    else:
+        mensajes_feedback.append(f"INFO: No se seleccionaron intereses. Puntuación de afinidad de interés base: {interest_match_score:.2f}.")
+
+
+    # Scoring para interest_match_score
+    if num_selected_intereses > 0: # Aplicar bonus/penalty solo si intereses fueron parte de la estrategia
+        if interest_match_score >= 0.7: puntuacion_actual += BONUS_BUEN_TARGETING
+        elif interest_match_score >= 0.4: puntuacion_actual += (BONUS_BUEN_TARGETING / 2)
+        elif interest_match_score < 0.15: puntuacion_actual += PENALIDAD_FUERTE_TARGETING
+        else: puntuacion_actual += PENALIDAD_SUAVE_TARGETING
     # else: No specific penalty here if no interests are selected, as it's a valid strategy (broad campaign)
     # puntuacion_actual += PENALIDAD_SUAVE_TARGETING # Old logic for no interests selected, removing as it might be too punitive if broad is intentional
 
@@ -456,6 +526,27 @@ def simular_campana(marca_id, audiencia_id, presupuesto, selected_interes_ids=No
     cpc_calculado = (presupuesto_gastado / clics) if clics > 0 else 0
     ctr_final_reportado = clics / impresiones if impresiones > 0 else 0
 
+    # --- Feedback for underspending ---
+    if presupuesto_gastado < presupuesto:
+        explanation_message = f"NOTA SOBRE EL PRESUPUESTO: Se gastó {presupuesto_gastado:,.0f} COP de un total de {presupuesto:,.0f} COP. "
+        underspend_ratio = (presupuesto - presupuesto_gastado) / presupuesto if presupuesto > 0 else 0
+
+        # Ensure refined_potential_audience_size is not zero to avoid division by zero or misleading ratios
+        audience_reached_ratio = 0
+        if refined_potential_audience_size > 0:
+            audience_reached_ratio = impresiones / refined_potential_audience_size
+
+        if audience_reached_ratio >= 0.9: # Reached most of the targetable audience
+            explanation_message += "Esto puede ser porque se alcanzó a la mayoría de la audiencia objetivo estimada con la configuración actual. "
+        elif efectividad_targeting_combinada < 0.35 and puntuacion_final_con_ruido < 5: # Low targeting effectiveness and low score
+            explanation_message += "La baja efectividad de la segmentación o un bajo atractivo general de la campaña podrían haber limitado el gasto para optimizar los resultados dentro del presupuesto asignado. "
+        elif underspend_ratio > 0.5 and presupuesto > PRESUPUESTO_ALTO : # Significant underspend on a large budget
+            explanation_message += "El sistema puede haber limitado el gasto para evitar una saturación excesiva de la audiencia o si se estimó que un gasto adicional no mejoraría significativamente los resultados. "
+        else: # Generic message
+            explanation_message += "Esto puede ocurrir si el tamaño de la audiencia alcanzable es limitado por la segmentación, o si el sistema optimiza el gasto para no exceder el punto de retornos decrecientes. "
+
+        mensajes_feedback.append(explanation_message)
+
     return {
         "marca_nombre": marca["nombre"], "audiencia_nombre": audiencia["nombre"],
         "campaign_goal_nombre": campaign_goal["nombre"], "presupuesto_inicial": presupuesto,
@@ -476,6 +567,8 @@ def simular_campana(marca_id, audiencia_id, presupuesto, selected_interes_ids=No
         "mensajes_feedback": mensajes_feedback,
         "potential_audience_size_from_segment": potential_audience_size_from_segment,
         "refined_potential_audience_size": refined_potential_audience_size,
+        "campaign_duration_days": campaign_duration_days, # Return duration
+        "selected_product_ids": selected_product_ids if selected_product_ids else [], # Return selected products
         "mensaje": f"Campaña para {marca['nombre']} ({marca['categoria']}) con objetivo '{campaign_goal['nombre']}', dirigida a {audiencia['nombre']}."
     }
 

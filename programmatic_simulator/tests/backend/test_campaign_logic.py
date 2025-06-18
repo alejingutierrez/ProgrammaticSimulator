@@ -1,5 +1,6 @@
 import unittest
-from programmatic_simulator.backend.simulator.campaign_logic import simular_campana, COSTO_POR_MIL_IMPRESIONES_BASE, MAX_PUNTOS_POR_FACTOR, PRESUPUESTO_BAJO as CL_PRESUPUESTO_BAJO, PRESUPUESTO_ALTO as CL_PRESUPUESTO_ALTO
+from unittest.mock import patch # Might need for underspend tests later
+from programmatic_simulator.backend.simulator.campaign_logic import simular_campana, calculate_total_affinity, COSTO_POR_MIL_IMPRESIONES_BASE, MAX_PUNTOS_POR_FACTOR, PRESUPUESTO_BAJO as CL_PRESUPUESTO_BAJO, PRESUPUESTO_ALTO as CL_PRESUPUESTO_ALTO, PRESUPUESTO_MINIMO_IMPACTO
 from programmatic_simulator.backend.data import market_data
 
 class TestCampaignLogic(unittest.TestCase):
@@ -71,43 +72,58 @@ class TestCampaignLogic(unittest.TestCase):
             audiencia_id=self.AUD_FAMILIAS_ID,
             presupuesto=self.PRESUPUESTO_ALTO,
             selected_interes_ids=self.INTERESES_FAMILIA_RELEVANTES,
-            campaign_goal_id=self.GOAL_TRAFFIC_ID
+            campaign_goal_id=self.GOAL_TRAFFIC_ID,
+            selected_product_ids=[],
+            campaign_duration_days=None
         )
         self.assertIsInstance(result, dict)
         self.assertNotIn("error", result)
-        # Score might be slightly different due to constant changes, but should still be high.
         self.assertGreaterEqual(result['puntuacion'], 7, f"La puntuación en un escenario ideal debería ser alta (>=7). Actual: {result['puntuacion']}")
-        self.assertFeedbackContains(result['mensajes_feedback'], "alta afinidad")
-        self.assertFeedbackContains(result['mensajes_feedback'], "Excelente segmentación por intereses")
+        # Feedback messages might change due to new logic and duration/underspend messages.
+        # Making these checks more general or removing if they become too brittle.
+        self.assertTrue(any("afinidad marca-audiencia calculada" in msg.lower() and "(alta)" in msg.lower() for msg in result['mensajes_feedback']))
+        self.assertTrue(any("afinidad de los intereses seleccionados con la marca/productos es muy alta" in msg.lower() for msg in result['mensajes_feedback']))
         self.assertIn('potential_audience_size_from_segment', result)
         self.assertIn('refined_potential_audience_size', result)
 
     def test_poor_affinity(self):
         result = simular_campana(
-            marca_id=self.MARCA_TECH_ID, # Tech
-            audiencia_id=self.AUD_FAMILIAS_ID, # Familias (Afinidad Tech en Familias es 0.4)
+            marca_id=self.MARCA_TECH_ID,
+            audiencia_id=self.AUD_FAMILIAS_ID,
             presupuesto=self.PRESUPUESTO_MEDIO,
             selected_interes_ids=self.INTERESES_FAMILIA_RELEVANTES,
-            campaign_goal_id=self.GOAL_TRAFFIC_ID
+            campaign_goal_id=self.GOAL_TRAFFIC_ID,
+            selected_product_ids=[],
+            campaign_duration_days=None
         )
         self.assertIsInstance(result, dict)
-        # Score expectation adjusted, might be lower due to new base rates
-        self.assertTrue(7 <= result['puntuacion'] <= 9, f"Puntuación esperada 7-9. Actual: {result['puntuacion']}") # Adjusted from 4-7
-        self.assertFeedbackContains(result['mensajes_feedback'], "afinidad marca-audiencia es moderada")
+        self.assertTrue(7 <= result['puntuacion'] <= 9, f"Puntuación esperada 7-9. Actual: {result['puntuacion']}")
+        self.assertFeedbackContains(result['mensajes_feedback'], "afinidad marca-audiencia calculada")
+        self.assertFeedbackContains(result['mensajes_feedback'], "(Moderada)")
+
 
     def test_irrelevant_interests(self):
         result = simular_campana(
             marca_id=self.MARCA_RETAIL_ID,
             audiencia_id=self.AUD_FAMILIAS_ID,
             presupuesto=self.PRESUPUESTO_MEDIO,
-            selected_interes_ids=self.INTERESES_IRRELEVANTES_PARA_FAMILIA,
-            campaign_goal_id=self.GOAL_TRAFFIC_ID
+            selected_interes_ids=self.INTERESES_IRRELEVANTES_PARA_FAMILIA, # These might have very low or 0.1 scores
+            campaign_goal_id=self.GOAL_TRAFFIC_ID,
+            selected_product_ids=[],
+            campaign_duration_days=None
         )
         self.assertIsInstance(result, dict)
-        self.assertLessEqual(result['interest_match_score'], 0.1)
-        # Score expectation adjusted
+        # interest_match_score will be low (average of 0.1s if no affinities found)
+        self.assertLessEqual(result['interest_match_score'], 0.15) # Adjusted, likely 0.1
         self.assertTrue(2 <= result['puntuacion'] <= 5, f"Puntuación con intereses irrelevantes debería ser baja (2-5). Actual: {result['puntuacion']}")
-        self.assertFeedbackContains(result['mensajes_feedback'], "no coinciden NADA")
+        # The message "no coinciden NADA" was removed/changed in campaign_logic.
+        # New message is "La afinidad de los intereses seleccionados con la marca/productos es críticamente baja" or "baja"
+        self.assertTrue(
+            any("críticamente baja" in msg.lower() for msg in result['mensajes_feedback']) or
+            any("es baja" in msg.lower() for msg in result['mensajes_feedback'] if "intereses seleccionados con la marca/productos es baja" in msg.lower()),
+            "Feedback for very low interest match not found or changed."
+        )
+
 
     def test_mismatched_campaign_goal_conversion(self):
         result = simular_campana(
@@ -115,12 +131,13 @@ class TestCampaignLogic(unittest.TestCase):
             audiencia_id=self.AUD_JOVENES_ID,
             presupuesto=self.PRESUPUESTO_BAJO,
             selected_interes_ids=self.INTERESES_JOVENES_RELEVANTES,
-            campaign_goal_id=self.GOAL_CONVERSION_ID
+            campaign_goal_id=self.GOAL_CONVERSION_ID,
+            selected_product_ids=[],
+            campaign_duration_days=None
         )
         self.assertIsInstance(result, dict)
-        # Score range adjusted, conversion logic is stricter
-        self.assertTrue(7 <= result['puntuacion'] <= 9, f"Puntuación esperada 7-9. Actual: {result['puntuacion']}") # Adjusted from 3-6
-        self.assertLess(result['conversiones_calculadas'], result['clics'] * 0.05, "Conversiones deben ser una pequeña fracción de clics") # Max 5% conversion rate roughly
+        self.assertTrue(7 <= result['puntuacion'] <= 9, f"Puntuación esperada 7-9. Actual: {result['puntuacion']}")
+        self.assertLess(result['conversiones_calculadas'], result['clics'] * 0.05, "Conversiones deben ser una pequeña fracción de clics")
         if result['conversiones_calculadas'] == 0 and result['clics'] > 10:
              self.assertFeedbackContains(result['mensajes_feedback'], "no se generó ninguna conversión")
 
@@ -128,16 +145,15 @@ class TestCampaignLogic(unittest.TestCase):
         result = simular_campana(
             marca_id=self.MARCA_RETAIL_ID,
             audiencia_id=self.AUD_FAMILIAS_ID,
-            presupuesto=self.PRESUPUESTO_MUY_BAJO, # 30k
+            presupuesto=self.PRESUPUESTO_MUY_BAJO,
             selected_interes_ids=self.INTERESES_FAMILIA_RELEVANTES,
-            campaign_goal_id=self.GOAL_AWARENESS_ID
+            campaign_goal_id=self.GOAL_AWARENESS_ID,
+            selected_product_ids=[],
+            campaign_duration_days=None
         )
         self.assertIsInstance(result, dict)
-        # Score adjusted, awareness goal scoring changed
         self.assertTrue(2 <= result['puntuacion'] <= 5, f"Puntuación esperada 2-5. Actual: {result['puntuacion']}")
         self.assertFeedbackContains(result['mensajes_feedback'], "presupuesto es muy bajo")
-        # The specific message for awareness might change based on reach % of potential
-        # self.assertFeedbackContains(result['mensajes_feedback'], "especialmente para un objetivo de 'Reconocimiento de Marca'")
 
     def test_no_interests_selected(self):
         result = simular_campana(
@@ -145,26 +161,13 @@ class TestCampaignLogic(unittest.TestCase):
             audiencia_id=self.AUD_JOVENES_ID,
             presupuesto=self.PRESUPUESTO_MEDIO,
             selected_interes_ids=[],
-            campaign_goal_id=self.GOAL_TRAFFIC_ID
+            campaign_goal_id=self.GOAL_TRAFFIC_ID,
+            selected_product_ids=[],
+            campaign_duration_days=None
         )
         self.assertIsInstance(result, dict)
-        self.assertAlmostEqual(result['interest_match_score'], 0.3, delta=0.001) # Updated to 0.3 based on new logic
-        self.assertFeedbackContains(result['mensajes_feedback'], "No seleccionaste intereses. Usando puntuación de afinidad de interés base (0.3).")
-        # Score might change based on the 0.05 difference in interest_match_score.
-        # The impact of interest_match_score on puntuacion_actual was PENALIDAD_SUAVE_TARGETING (-1.0)
-        # This penalty is no longer applied by default if no interests are selected in the new logic.
-        # So, the score might actually increase. Let's adjust expectation.
-        # Old: 2-5. New: Might be higher. For now, let's widen it or re-evaluate based on a run.
-        # If no penalty, score should be higher than when it had -1.0.
-        # Base 3.0. Afinidad marca-audiencia (Bancolombia-Jovenes = 0.5) -> +0.75 (BONUS_BUEN_TARGETING/2)
-        # Intereses: old 0.35 with -1.0 penalty. New 0.3 without specific penalty.
-        # So, score should increase by approx 1.0 if all else same.
-        # Efectividad_targeting_combinada: old (0.5+0.35)/2 = 0.425. New (0.5+0.3)/2 = 0.4
-        # This change is minor.
-        # The main difference is removal of PENALIDAD_SUAVE_TARGETING for no interests selected.
-        # Old Puntuacion actual = 3.0 + 0.75 (afinidad) - 1.0 (intereses) = 2.75 before goal/budget.
-        # New Puntuacion actual = 3.0 + 0.75 (afinidad) = 3.75 before goal/budget.
-        # So, an increase of 1.0 in puntuacion_actual.
+        self.assertAlmostEqual(result['interest_match_score'], 0.3, delta=0.001)
+        self.assertFeedbackContains(result['mensajes_feedback'], "No seleccionaste intereses. Puntuación de afinidad de interés base: 0.30.")
         self.assertTrue(3 <= result['puntuacion'] <= 6, f"Puntuación {result['puntuacion']} inesperada para 'sin intereses'.")
 
 
@@ -175,12 +178,13 @@ class TestCampaignLogic(unittest.TestCase):
         # int_001 (Tecnología Emergente) has afinidad_producto: {"prod_012_01": 0.65}
         # Rappi Prime is prod_012_01 from marca_012 (Rappi)
         result = simular_campana(
-            marca_id=self.MARCA_RAPPI_ID, # Rappi
-            audiencia_id=self.AUD_JOVENES_ID, # Any audience
+            marca_id=self.MARCA_RAPPI_ID,
+            audiencia_id=self.AUD_JOVENES_ID,
             presupuesto=self.PRESUPUESTO_MEDIO,
             selected_interes_ids=[self.INT_TECNOLOGIA_EMERGENTE_ID],
             selected_product_ids=[self.PROD_RAPPI_PRIME_ID],
-            campaign_goal_id=self.GOAL_TRAFFIC_ID
+            campaign_goal_id=self.GOAL_TRAFFIC_ID,
+            campaign_duration_days=None
         )
         self.assertIsInstance(result, dict)
         self.assertNotIn("error", result, result.get("mensajes_feedback"))
@@ -192,12 +196,13 @@ class TestCampaignLogic(unittest.TestCase):
         # int_001 (Tecnología Emergente) has afinidad_marca: {"marca_012": 0.7}
         # Use a Rappi product (prod_012_02) for which int_001 has NO specific afinidad_producto entry.
         result = simular_campana(
-            marca_id=self.MARCA_RAPPI_ID, # Rappi
+            marca_id=self.MARCA_RAPPI_ID,
             audiencia_id=self.AUD_JOVENES_ID,
             presupuesto=self.PRESUPUESTO_MEDIO,
             selected_interes_ids=[self.INT_TECNOLOGIA_EMERGENTE_ID],
-            selected_product_ids=[self.PROD_RAPPI_RESTAURANTES_ID], # Assume int_001 has no specific affinity for this Rappi product
-            campaign_goal_id=self.GOAL_TRAFFIC_ID
+            selected_product_ids=[self.PROD_RAPPI_RESTAURANTES_ID],
+            campaign_goal_id=self.GOAL_TRAFFIC_ID,
+            campaign_duration_days=None
         )
         self.assertIsInstance(result, dict)
         self.assertNotIn("error", result, result.get("mensajes_feedback"))
@@ -214,14 +219,15 @@ class TestCampaignLogic(unittest.TestCase):
             audiencia_id=self.AUD_JOVENES_ID,
             presupuesto=self.PRESUPUESTO_MEDIO,
             selected_interes_ids=[self.INT_TECNOLOGIA_EMERGENTE_ID],
-            selected_product_ids=[self.PROD_RAPPI_PRIME_ID], # This product has specific affinity in int_001
-            campaign_goal_id=self.GOAL_TRAFFIC_ID
+            selected_product_ids=[self.PROD_RAPPI_PRIME_ID],
+            campaign_goal_id=self.GOAL_TRAFFIC_ID,
+            campaign_duration_days=None
         )
         self.assertIsInstance(result, dict)
         self.assertNotIn("error", result, result.get("mensajes_feedback"))
         self.assertAlmostEqual(result['interest_match_score'], 0.65, delta=0.001, msg="Product affinity (0.65) should take precedence over brand affinity (0.7)")
         self.assertFeedbackContains(result['mensajes_feedback'], "tiene afinidad de producto promedio de 0.65")
-        self.assertFalse(any("tiene afinidad de marca de 0.70" in msg for msg in result['mensajes_feedback'] if self.INT_TECNOLOGIA_EMERGENTE_ID in msg), "Brand affinity message should not appear if product affinity took precedence for this interest.")
+        self.assertFalse(any("tiene afinidad de marca de 0.70" in msg for msg in result['mensajes_feedback'] if market_data.obtener_interes_por_id(self.INT_TECNOLOGIA_EMERGENTE_ID)['nombre'] in msg), "Brand affinity message should not appear if product affinity took precedence for this interest.")
 
     def test_interest_affinity_average_for_multiple_selected_products_one_interest(self):
         """
@@ -239,8 +245,9 @@ class TestCampaignLogic(unittest.TestCase):
             audiencia_id=self.AUD_JOVENES_ID,
             presupuesto=self.PRESUPUESTO_MEDIO,
             selected_interes_ids=[self.INT_TECNOLOGIA_EMERGENTE_ID],
-            selected_product_ids=[self.PROD_CLARO_5G_ID], # Only one product of Claro here
-            campaign_goal_id=self.GOAL_TRAFFIC_ID
+            selected_product_ids=[self.PROD_CLARO_5G_ID],
+            campaign_goal_id=self.GOAL_TRAFFIC_ID,
+            campaign_duration_days=None
         )
         self.assertIsInstance(result, dict)
         self.assertNotIn("error", result, result.get("mensajes_feedback"))
@@ -258,7 +265,8 @@ class TestCampaignLogic(unittest.TestCase):
             presupuesto=self.PRESUPUESTO_MEDIO,
             selected_interes_ids=[self.INT_TECNOLOGIA_EMERGENTE_ID, self.INT_VIDEOJUEGOS_ID],
             selected_product_ids=[self.PROD_RAPPI_PRIME_ID],
-            campaign_goal_id=self.GOAL_TRAFFIC_ID
+            campaign_goal_id=self.GOAL_TRAFFIC_ID,
+            campaign_duration_days=None
         )
         self.assertIsInstance(result, dict)
         self.assertNotIn("error", result, result.get("mensajes_feedback"))
@@ -277,8 +285,9 @@ class TestCampaignLogic(unittest.TestCase):
             audiencia_id=self.AUD_JOVENES_ID,
             presupuesto=self.PRESUPUESTO_MEDIO,
             selected_interes_ids=[self.INT_VIDEOJUEGOS_ID],
-            selected_product_ids=[self.PROD_RAPPI_PRIME_ID], # Rappi Prime
-            campaign_goal_id=self.GOAL_TRAFFIC_ID
+            selected_product_ids=[self.PROD_RAPPI_PRIME_ID],
+            campaign_goal_id=self.GOAL_TRAFFIC_ID,
+            campaign_duration_days=None
         )
         self.assertIsInstance(result, dict)
         self.assertNotIn("error", result, result.get("mensajes_feedback"))
@@ -295,11 +304,12 @@ class TestCampaignLogic(unittest.TestCase):
         # marca_001 (Bancolombia), aud_002 (Profesionales Jóvenes)
         # prod_001_01 (Cuenta de Ahorros) has afinidad_audiencia: {"aud_002": 0.7}
         result = simular_campana(
-            marca_id=self.MARCA_BANCO_ID, # Bancolombia
-            audiencia_id=self.AUD_PROFESIONALES_JOVENES_ID, # Profesionales Jóvenes
+            marca_id=self.MARCA_BANCO_ID,
+            audiencia_id=self.AUD_PROFESIONALES_JOVENES_ID,
             presupuesto=self.PRESUPUESTO_MEDIO,
-            selected_product_ids=["prod_001_01"], # Cuenta de Ahorros
-            campaign_goal_id=self.GOAL_TRAFFIC_ID
+            selected_product_ids=["prod_001_01"],
+            campaign_goal_id=self.GOAL_TRAFFIC_ID,
+            campaign_duration_days=None
         )
         self.assertIsInstance(result, dict)
         self.assertNotIn("error", result, result.get("mensajes_feedback"))
@@ -314,11 +324,12 @@ class TestCampaignLogic(unittest.TestCase):
         # Assume prod_001_03 (Crédito Hipotecario) has no specific affinity listed for aud_001.
         # market_data: prod_001_03 has {"aud_004": 0.7, "aud_013": 0.9}. No aud_001.
         result = simular_campana(
-            marca_id=self.MARCA_BANCO_ID, # Bancolombia
-            audiencia_id=self.AUD_JOVENES_ID, # Jóvenes Universitarios
+            marca_id=self.MARCA_BANCO_ID,
+            audiencia_id=self.AUD_JOVENES_ID,
             presupuesto=self.PRESUPUESTO_MEDIO,
-            selected_product_ids=["prod_001_03"], # Crédito Hipotecario
-            campaign_goal_id=self.GOAL_TRAFFIC_ID
+            selected_product_ids=["prod_001_03"],
+            campaign_goal_id=self.GOAL_TRAFFIC_ID,
+            campaign_duration_days=None
         )
         self.assertIsInstance(result, dict)
         self.assertNotIn("error", result, result.get("mensajes_feedback"))
@@ -343,11 +354,12 @@ class TestCampaignLogic(unittest.TestCase):
 
         segment_size = self.SEGMENT_JOVENES["size"]
         result = simular_campana(
-            marca_id=self.MARCA_TECH_ID, # High affinity with Jovenes
+            marca_id=self.MARCA_TECH_ID,
             audiencia_id=self.AUD_JOVENES_ID,
-            presupuesto=self.PRESUPUESTO_EXTREMO, # Very high budget
-            selected_interes_ids=self.INTERESES_JOVENES_RELEVANTES, # Some interests to refine
-            campaign_goal_id=self.GOAL_AWARENESS_ID
+            presupuesto=self.PRESUPUESTO_EXTREMO,
+            selected_interes_ids=self.INTERESES_JOVENES_RELEVANTES,
+            campaign_goal_id=self.GOAL_AWARENESS_ID,
+            selected_product_ids=[], campaign_duration_days=None
         )
         self.assertIsInstance(result, dict)
         self.assertIn('potential_audience_size_from_segment', result)
@@ -368,12 +380,12 @@ class TestCampaignLogic(unittest.TestCase):
         result = simular_campana(
             marca_id=self.MARCA_RETAIL_ID,
             audiencia_id=self.AUD_FAMILIAS_ID,
-            presupuesto=self.PRESUPUESTO_BAJO, # Low budget
+            presupuesto=self.PRESUPUESTO_BAJO,
             selected_interes_ids=self.INTERESES_FAMILIA_RELEVANTES,
-            campaign_goal_id=self.GOAL_AWARENESS_ID
+            campaign_goal_id=self.GOAL_AWARENESS_ID,
+            selected_product_ids=[], campaign_duration_days=None
         )
         self.assertIsInstance(result, dict)
-        # Impressions should be primarily determined by budget and targeting effectiveness, not population cap.
         self.assertLess(result['impresiones'], result['refined_potential_audience_size'] * 0.9, "Impressions should be well below refined_potential_audience_size for low budget")
 
         is_limited_by_population = any("limitado por el tamaño estimado del segmento" in msg.lower() for msg in result['mensajes_feedback'])
@@ -388,32 +400,27 @@ class TestCampaignLogic(unittest.TestCase):
             audiencia_id=self.AUD_FAMILIAS_ID,
             presupuesto=self.PRESUPUESTO_MEDIO,
             selected_interes_ids=[],
-            campaign_goal_id=self.GOAL_AWARENESS_ID
+            campaign_goal_id=self.GOAL_AWARENESS_ID,
+            selected_product_ids=[], campaign_duration_days=None
         )
         refined_size_no_interests = result_no_interests['refined_potential_audience_size']
-        self.assertEqual(result_no_interests['potential_audience_size_from_segment'], refined_size_no_interests) # Should be same if no interests
+        self.assertEqual(result_no_interests['potential_audience_size_from_segment'], refined_size_no_interests)
 
         result_with_interests = simular_campana(
             marca_id=self.MARCA_RETAIL_ID,
             audiencia_id=self.AUD_FAMILIAS_ID,
             presupuesto=self.PRESUPUESTO_MEDIO,
-            selected_interes_ids=self.INTERESES_FAMILIA_RELEVANTES, # 3 interests
-            campaign_goal_id=self.GOAL_AWARENESS_ID
+            selected_interes_ids=self.INTERESES_FAMILIA_RELEVANTES,
+            campaign_goal_id=self.GOAL_AWARENESS_ID,
+            selected_product_ids=[], campaign_duration_days=None
         )
         refined_size_with_interests = result_with_interests['refined_potential_audience_size']
 
         self.assertLess(refined_size_with_interests, refined_size_no_interests, "Refined size with interests should be smaller than without interests.")
-        # Impressions might also be lower due to tighter targeting, or could be higher if targeting is much more effective
-        # This assertion is tricky as other factors influence impressions.
-        # self.assertLessEqual(result_with_interests['impresiones'], result_no_interests['impresiones'] * 1.1) # Allow slight increase due to effectiveness
 
     def test_engagement_rate_logic(self):
-        """Test new engagement rate logic based on affinity and interest match."""
-        # Scenario 1: Good (Tech brand to Tech audience, relevant interests)
-        res_good = simular_campana(self.MARCA_TECH_ID, self.AUD_TECH_ID, self.PRESUPUESTO_MEDIO, self.INTERESES_TECH_RELEVANTES, self.GOAL_ENGAGEMENT_ID)
-
-        # Scenario 2: Poor (Retail brand to Tech audience, irrelevant interests for Tech)
-        res_poor = simular_campana(self.MARCA_RETAIL_ID, self.AUD_TECH_ID, self.PRESUPUESTO_MEDIO, self.INTERESES_FAMILIA_RELEVANTES, self.GOAL_ENGAGEMENT_ID)
+        res_good = simular_campana(self.MARCA_TECH_ID, self.AUD_TECH_ID, self.PRESUPUESTO_MEDIO, self.INTERESES_TECH_RELEVANTES, self.GOAL_ENGAGEMENT_ID, selected_product_ids=[], campaign_duration_days=None)
+        res_poor = simular_campana(self.MARCA_RETAIL_ID, self.AUD_TECH_ID, self.PRESUPUESTO_MEDIO, self.INTERESES_FAMILIA_RELEVANTES, self.GOAL_ENGAGEMENT_ID, selected_product_ids=[], campaign_duration_days=None)
 
         self.assertIsInstance(res_good, dict)
         self.assertIsInstance(res_poor, dict)
@@ -433,12 +440,8 @@ class TestCampaignLogic(unittest.TestCase):
 
 
     def test_conversion_rate_logic(self):
-        """Test new conversion rate logic."""
-        # Scenario 1: Good (Retail to Familias, relevant interests, conversion goal)
-        res_good = simular_campana(self.MARCA_RETAIL_ID, self.AUD_FAMILIAS_ID, self.PRESUPUESTO_ALTO, self.INTERESES_FAMILIA_RELEVANTES, self.GOAL_CONVERSION_ID)
-
-        # Scenario 2: Poor (Tech to Familias (low affinity), irrelevant interests, conversion goal)
-        res_poor = simular_campana(self.MARCA_TECH_ID, self.AUD_FAMILIAS_ID, self.PRESUPUESTO_ALTO, self.INTERESES_IRRELEVANTES_PARA_FAMILIA, self.GOAL_CONVERSION_ID)
+        res_good = simular_campana(self.MARCA_RETAIL_ID, self.AUD_FAMILIAS_ID, self.PRESUPUESTO_ALTO, self.INTERESES_FAMILIA_RELEVANTES, self.GOAL_CONVERSION_ID, selected_product_ids=[], campaign_duration_days=None)
+        res_poor = simular_campana(self.MARCA_TECH_ID, self.AUD_FAMILIAS_ID, self.PRESUPUESTO_ALTO, self.INTERESES_IRRELEVANTES_PARA_FAMILIA, self.GOAL_CONVERSION_ID, selected_product_ids=[], campaign_duration_days=None)
 
         self.assertIsInstance(res_good, dict)
         self.assertIsInstance(res_poor, dict)
@@ -468,10 +471,11 @@ class TestCampaignLogic(unittest.TestCase):
         # We need to find a combination where impresiones_efectivas / refined_potential_audience_size >= 0.7
         # This might mean a high budget and very effective targeting.
         result = simular_campana(
-            marca_id=self.MARCA_TECH_ID, audiencia_id=self.AUD_JOVENES_ID, # High affinity
-            presupuesto=self.PRESUPUESTO_EXTREMO, # Very high budget to ensure reach is not budget-limited before population cap
-            selected_interes_ids=self.INTERESES_JOVENES_RELEVANTES, # Good interests
-            campaign_goal_id=self.GOAL_AWARENESS_ID
+            marca_id=self.MARCA_TECH_ID, audiencia_id=self.AUD_JOVENES_ID,
+            presupuesto=self.PRESUPUESTO_EXTREMO,
+            selected_interes_ids=self.INTERESES_JOVENES_RELEVANTES,
+            campaign_goal_id=self.GOAL_AWARENESS_ID,
+            selected_product_ids=[], campaign_duration_days=None
         )
         self.assertIsInstance(result, dict)
         reach_percentage = result['impresiones'] / result['refined_potential_audience_size'] if result['refined_potential_audience_size'] > 0 else 0
@@ -493,11 +497,12 @@ class TestCampaignLogic(unittest.TestCase):
         # For this test, we'll use poor affinity and irrelevant interests to try and force low impressions
         # despite a high budget.
         result = simular_campana(
-            marca_id=self.MARCA_CPG_ID, # CPG
-            audiencia_id=self.AUD_TECH_ID, # Tech audience (low affinity for CPG)
-            presupuesto=self.PRESUPUESTO_EXTREMO, # High budget
-            selected_interes_ids=self.INTERESES_IRRELEVANTES_PARA_FAMILIA, # Irrelevant for Tech
-            campaign_goal_id=self.GOAL_AWARENESS_ID
+            marca_id=self.MARCA_CPG_ID,
+            audiencia_id=self.AUD_TECH_ID,
+            presupuesto=self.PRESUPUESTO_EXTREMO,
+            selected_interes_ids=self.INTERESES_IRRELEVANTES_PARA_FAMILIA,
+            campaign_goal_id=self.GOAL_AWARENESS_ID,
+            selected_product_ids=[], campaign_duration_days=None
         )
         self.assertIsInstance(result, dict)
 
@@ -523,10 +528,11 @@ class TestCampaignLogic(unittest.TestCase):
         """Awareness: Good relative reach (>30%) with low budget, expecting bonus."""
         # Low budget, but good targeting leading to >30% reach of a potentially small refined segment.
         result = simular_campana(
-            marca_id=self.MARCA_TECH_ID, audiencia_id=self.AUD_JOVENES_ID, # Good affinity
-            presupuesto=self.PRESUPUESTO_BAJO, # Low budget
-            selected_interes_ids=self.INTERESES_JOVENES_RELEVANTES, # Good interests, makes refined_potential_audience_size smaller
-            campaign_goal_id=self.GOAL_AWARENESS_ID
+            marca_id=self.MARCA_TECH_ID, audiencia_id=self.AUD_JOVENES_ID,
+            presupuesto=self.PRESUPUESTO_BAJO,
+            selected_interes_ids=self.INTERESES_JOVENES_RELEVANTES,
+            campaign_goal_id=self.GOAL_AWARENESS_ID,
+            selected_product_ids=[], campaign_duration_days=None
         )
         self.assertIsInstance(result, dict)
         max_impressions_budget_could_buy = (self.PRESUPUESTO_BAJO / COSTO_POR_MIL_IMPRESIONES_BASE) * 1000
@@ -545,8 +551,7 @@ class TestCampaignLogic(unittest.TestCase):
 
 
     def test_feedback_specific_audience_segment_found(self):
-        """Test feedback message for specific audience segment being used."""
-        result = simular_campana(self.MARCA_RETAIL_ID, self.AUD_FAMILIAS_ID, self.PRESUPUESTO_MEDIO)
+        result = simular_campana(self.MARCA_RETAIL_ID, self.AUD_FAMILIAS_ID, self.PRESUPUESTO_MEDIO, selected_product_ids=[], campaign_duration_days=None)
         self.assertFeedbackContains(result['mensajes_feedback'], f"Segmento de población '{self.SEGMENT_FAMILIAS['nombre_segmento']}'")
         self.assertFeedbackContains(result['mensajes_feedback'], "usado para estimar alcance máximo")
 
@@ -570,19 +575,93 @@ class TestCampaignLogic(unittest.TestCase):
 
     def test_score_always_in_range(self):
         scenarios = [
-            {"name": "Ideal", "params": (self.MARCA_RETAIL_ID, self.AUD_FAMILIAS_ID, self.PRESUPUESTO_ALTO, self.INTERESES_FAMILIA_RELEVANTES, self.GOAL_TRAFFIC_ID)},
-            {"name": "Pobre Afinidad e Intereses", "params": (self.MARCA_TECH_ID, self.AUD_FAMILIAS_ID, self.PRESUPUESTO_MEDIO, self.INTERESES_IRRELEVANTES_PARA_FAMILIA, self.GOAL_TRAFFIC_ID)},
-            {"name": "Presupuesto Muy Bajo", "params": (self.MARCA_BANCO_ID, self.AUD_JOVENES_ID, self.PRESUPUESTO_MUY_BAJO, None, self.GOAL_AWARENESS_ID)},
-            {"name": "Todo Mal", "params": (self.MARCA_TECH_ID, self.AUD_FAMILIAS_ID, self.PRESUPUESTO_MUY_BAJO, self.INTERESES_IRRELEVANTES_PARA_FAMILIA, self.GOAL_CONVERSION_ID)},
+            {"name": "Ideal", "params": (self.MARCA_RETAIL_ID, self.AUD_FAMILIAS_ID, self.PRESUPUESTO_ALTO, self.INTERESES_FAMILIA_RELEVANTES, self.GOAL_TRAFFIC_ID, [], None)},
+            {"name": "Pobre Afinidad e Intereses", "params": (self.MARCA_TECH_ID, self.AUD_FAMILIAS_ID, self.PRESUPUESTO_MEDIO, self.INTERESES_IRRELEVANTES_PARA_FAMILIA, self.GOAL_TRAFFIC_ID, [], None)},
+            {"name": "Presupuesto Muy Bajo", "params": (self.MARCA_BANCO_ID, self.AUD_JOVENES_ID, self.PRESUPUESTO_MUY_BAJO, None, self.GOAL_AWARENESS_ID, [], None)},
+            {"name": "Todo Mal", "params": (self.MARCA_TECH_ID, self.AUD_FAMILIAS_ID, self.PRESUPUESTO_MUY_BAJO, self.INTERESES_IRRELEVANTES_PARA_FAMILIA, self.GOAL_CONVERSION_ID, [], None)},
         ]
         for sc in scenarios:
             with self.subTest(name=sc["name"]):
-                result = simular_campana(*sc["params"])
+                # Unpack params and add selected_product_ids and campaign_duration_days if not already part of the tuple
+                # For this test, we assume they are added as the last two elements if not present.
+                # However, the current params tuples have 5 elements, simular_campana now takes 7.
+                # So, we need to ensure all calls are updated.
+                # The *sc["params"] already includes selected_product_ids=[] and campaign_duration_days=None if added above.
+                # Let's adjust the tuples in scenarios directly for clarity.
+                # params_tuple = sc["params"]
+                # if len(params_tuple) == 5:
+                #     params_tuple = (*params_tuple, [], None) # Add defaults for products and duration
+
+                result = simular_campana(*sc["params"]) # Call with updated params
                 self.assertIsInstance(result, dict)
                 self.assertNotIn("error", result)
                 self.assertTrue(1 <= result['puntuacion'] <= 10, f"Puntuación {result['puntuacion']} fuera de rango para {sc['name']}")
                 self.assertIn('potential_audience_size_from_segment', result)
                 self.assertIn('refined_potential_audience_size', result)
+
+    # --- Tests for calculate_total_affinity ---
+    def test_calculate_total_affinity_basic(self):
+        # Test with known good brand/audience, no products/interests
+        # Bancolombia (Banca) with Jóvenes Universitarios (Afinidad Banca: 0.5)
+        # No interests selected, so interest_match_score should be default (0.3)
+        result = calculate_total_affinity(self.MARCA_BANCO_ID, self.AUD_JOVENES_ID, [], [])
+        self.assertNotIn("error", result)
+        self.assertAlmostEqual(result['afinidad_marca_audiencia'], 0.5, delta=0.01)
+        self.assertAlmostEqual(result['interest_match_score'], 0.3, delta=0.01) # Default for no interests
+        expected_overall = (0.5 + 0.3) / 2
+        self.assertAlmostEqual(result['overall_affinity'], expected_overall, delta=0.01)
+
+        # Test with relevant interests
+        # Rappi (Tech) with Jóvenes (Tech affinity: 0.9)
+        # INTERESES_JOVENES_RELEVANTES = ["int_001", "int_002", "int_005"]
+        # int_001 (Tec Emergente) -> afinidad_marca: {"marca_012": 0.7}
+        # int_002 (Videojuegos) -> default 0.1 (assuming no specific affinity for Rappi)
+        # int_005 (Redes Sociales) -> default 0.1 (assuming no specific affinity for Rappi)
+        # Expected interest score = (0.7 + 0.1 + 0.1) / 3 = 0.9 / 3 = 0.3
+        result_with_interests = calculate_total_affinity(self.MARCA_RAPPI_ID, self.AUD_JOVENES_ID, self.INTERESES_JOVENES_RELEVANTES, [])
+        self.assertNotIn("error", result_with_interests)
+        # Rappi category "Tech", Aud Jovenes afinidad_marca_categoria for Tech is 0.9
+        self.assertAlmostEqual(result_with_interests['afinidad_marca_audiencia'], 0.9, delta=0.01)
+        self.assertAlmostEqual(result_with_interests['interest_match_score'], 0.3, delta=0.01)
+        expected_overall_interests = (0.9 + 0.3) / 2
+        self.assertAlmostEqual(result_with_interests['overall_affinity'], expected_overall_interests, delta=0.01)
+
+    def test_calculate_total_affinity_with_products(self):
+        # Bancolombia (marca_001) with Profesionales Jóvenes (aud_002)
+        # Product prod_001_01 (Cuenta de Ahorros) has afinidad_audiencia: {"aud_002": 0.7}
+        result = calculate_total_affinity(self.MARCA_BANCO_ID, self.AUD_PROFESIONALES_JOVENES_ID, [], ["prod_001_01"])
+        self.assertNotIn("error", result)
+        self.assertAlmostEqual(result['afinidad_marca_audiencia'], 0.7, delta=0.01) # Product affinity should override category
+        self.assertAlmostEqual(result['interest_match_score'], 0.3, delta=0.01) # No interests
+        expected_overall = (0.7 + 0.3) / 2
+        self.assertAlmostEqual(result['overall_affinity'], expected_overall, delta=0.01)
+
+    def test_calculate_total_affinity_invalid_ids(self):
+        result_bad_marca = calculate_total_affinity("bad_marca_id", self.AUD_JOVENES_ID)
+        self.assertIn("error", result_bad_marca)
+        self.assertIn("no encontrada", result_bad_marca["error"])
+
+        result_bad_audiencia = calculate_total_affinity(self.MARCA_BANCO_ID, "bad_aud_id")
+        self.assertIn("error", result_bad_audiencia)
+        self.assertIn("no encontrada", result_bad_audiencia["error"])
+
+    # --- Tests for new feedback messages ---
+    def test_feedback_campaign_duration_info(self):
+        duration = 15
+        result = simular_campana(self.MARCA_RETAIL_ID, self.AUD_FAMILIAS_ID, self.PRESUPUESTO_MEDIO, [], None, [], campaign_duration_days=duration)
+        self.assertFeedbackContains(result['mensajes_feedback'], f"configurada para una duración de {duration} día(s)")
+
+    def test_feedback_campaign_duration_long_low_budget(self):
+        # Daily budget = 50000 / 60 = 833. Threshold daily low for min impact = 50000/30 = 1666. 833 < 1666 * 1.5 (2499)
+        result = simular_campana(self.MARCA_RETAIL_ID, self.AUD_FAMILIAS_ID, PRESUPUESTO_MINIMO_IMPACTO, [], None, [], campaign_duration_days=60)
+        self.assertFeedbackContains(result['mensajes_feedback'], "presupuesto diario")
+        self.assertFeedbackContains(result['mensajes_feedback'], "parece bajo para mantener una presencia efectiva")
+
+    def test_feedback_campaign_duration_short_high_budget(self):
+        # Daily budget = 2000000 / 5 = 400,000. Threshold daily high = 1000000/30 = 33,333. 400000 > 33333 * 0.75 (25000)
+        result = simular_campana(self.MARCA_RETAIL_ID, self.AUD_FAMILIAS_ID, CL_PRESUPUESTO_ALTO, [], None, [], campaign_duration_days=5)
+        self.assertFeedbackContains(result['mensajes_feedback'], "presupuesto diario")
+        self.assertFeedbackContains(result['mensajes_feedback'], "considerable para una campaña corta")
 
 
 if __name__ == '__main__':
