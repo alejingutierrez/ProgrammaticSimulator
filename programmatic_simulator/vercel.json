@@ -1,0 +1,16 @@
+{
+  "routes": [
+    {
+      "src": "/",
+      "dest": "programmatic_simulator/frontend/index.html"
+    },
+    {
+      "src": "/api/(.*)",
+      "dest": "programmatic_simulator/backend/main.py"
+    },
+    {
+      "src": "/(.*)",
+      "dest": "programmatic_simulator/frontend/$1"
+    }
+  ]
+}
