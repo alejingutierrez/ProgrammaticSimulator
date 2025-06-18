@@ -1,0 +1,21 @@
+version: '3.8'
+services:
+  backend:
+    build:
+      context: ./programmatic_simulator
+      dockerfile: Dockerfile
+    ports:
+      - "5001:5001"
+    volumes:
+      - ./programmatic_simulator:/app
+    environment:
+      - FLASK_ENV=development # Ensures Flask runs in development mode
+      - FLASK_DEBUG=1 # Enables debugger
+  frontend:
+    image: nginx:alpine
+    ports:
+      - "8080:80"
+    volumes:
+      - ./programmatic_simulator/frontend:/usr/share/nginx/html
+    depends_on:
+      - backend

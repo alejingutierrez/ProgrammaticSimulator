@@ -114,3 +114,42 @@ To run the unit tests for the backend simulation logic:
 *   **Learning Modules:** Integrate educational content directly alongside the simulator features to explain concepts.
 *   **Campaign Saving/Loading:** Allow users to save their campaign configurations and results for later review or comparison.
 *   **Visualizations:** Add charts or graphs to display campaign results and trends more visually.
+
+## Running with Docker
+
+This project can be run using Docker and Docker Compose for a consistent development environment.
+
+### Prerequisites
+
+- Docker
+- Docker Compose
+
+### Setup and Running
+
+1.  **Build and Start Containers:**
+    Open your terminal in the project root directory (where `docker-compose.yml` is located) and run:
+    ```bash
+    docker-compose up --build
+    ```
+    This command will build the Docker images if they don't exist and then start the services. The `--build` flag ensures images are rebuilt if there are changes (e.g., in `Dockerfile` or `requirements.txt`).
+
+2.  **Accessing the Application:**
+    *   **Frontend:** Open your web browser and go to `http://localhost:8080`
+    *   **Backend API:** The backend will be accessible at `http://localhost:5001`. For example, you can try `http://localhost:5001/api/market-data`.
+
+3.  **Stopping the Application:**
+    To stop the containers, press `Ctrl+C` in the terminal where `docker-compose up` is running. To stop and remove the containers, you can run:
+    ```bash
+    docker-compose down
+    ```
+
+### Debugging
+
+-   **Backend (Flask):**
+    Since the backend service in `docker-compose.yml` mounts the local `programmatic_simulator` directory into the container and `FLASK_DEBUG=1` is set, changes to the Python code should automatically reload the Flask server. You can view logs directly in the terminal where `docker-compose up` is running.
+    If you need to access the backend container for more in-depth debugging:
+    1. Find the container ID or name: `docker ps` (look for the backend service)
+    2. Access the container's shell: `docker exec -it <container_id_or_name> /bin/sh` (or `/bin/bash` if available)
+
+-   **Frontend (Nginx):**
+    Frontend files are served directly from `programmatic_simulator/frontend`. Changes made there will be reflected immediately in the browser (you might need to clear your browser cache). Nginx logs can also be viewed in the `docker-compose up` output.
