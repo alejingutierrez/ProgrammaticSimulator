@@ -80,7 +80,7 @@ document.addEventListener('DOMContentLoaded', () => {
     async function cargarIntereses() {
         interesesCheckboxContainer.innerHTML = '<p>Cargando intereses...</p>'; // Show loading message
         try {
-            const response = await fetch('http://localhost:5001/api/interests-data');
+            const response = await fetch('/api/interests-data');
             if (!response.ok) {
                 throw new Error(`Error al cargar intereses: ${response.status}`);
             }
@@ -172,7 +172,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
 
         try {
-            const response = await fetch('http://localhost:5001/api/simular', {
+            const response = await fetch('/api/simular', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -206,7 +206,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     async function cargarDatosIniciales() {
         try {
-            const response = await fetch('http://localhost:5001/api/market-data');
+            const response = await fetch('/api/market-data');
             if (!response.ok) {
                 throw new Error(`Error al cargar datos de mercado: ${response.status}`);
             }
@@ -348,7 +348,7 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
 
-        let url = `http://localhost:5001/api/estimate-audience-size?audienciaId=${encodeURIComponent(audienciaId)}`;
+        let url = `/api/estimate-audience-size?audienciaId=${encodeURIComponent(audienciaId)}`;
         if (selectedInteresIds.length > 0) {
             selectedInteresIds.forEach(id => {
                 url += `&selectedInteresIds=${encodeURIComponent(id)}`;
@@ -460,7 +460,7 @@ document.addEventListener('DOMContentLoaded', () => {
         totalAffinityDisplay.textContent = 'Calculating...';
 
         try {
-            const response = await fetch('http://localhost:5001/api/calculate-affinity', {
+            const response = await fetch('/api/calculate-affinity', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
@@ -694,7 +694,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // cargarDatosIniciales unificada y correcta
     async function cargarDatosIniciales() {
         try {
-            const response = await fetch('http://localhost:5001/api/market-data');
+            const response = await fetch('/api/market-data');
             if (!response.ok) {
                 throw new Error(`Error al cargar datos de mercado: ${response.status}`);
             }
