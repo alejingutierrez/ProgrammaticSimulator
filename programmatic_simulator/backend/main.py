@@ -24,7 +24,8 @@ from .data.market_data import (
 )
 
 app = Flask(__name__)
-CORS(app) # Habilitar CORS para todas las rutas y orígenes
+app.config["JSON_AS_ASCII"] = False  # Ensure UTF-8 characters are returned properly
+CORS(app)  # Habilitar CORS para todas las rutas y orígenes
 
 logging.basicConfig(level=logging.DEBUG)
 
@@ -37,18 +38,13 @@ def home():
 @app.route('/api/market-data', methods=['GET'])
 def get_market_data():
     """Endpoint para obtener los datos de mercado (marcas, audiencias y objetivos de campaña)."""
+    logging.debug("GET /api/market-data")
     try:
-        data_to_return = {
-            "marcas": MARCAS_COLOMBIANAS,
-            "audiencias": AUDIENCIAS_COLOMBIANAS,
-            "campaign_goals": obtener_todos_los_campaign_goals()
-        }
-        # Optionally, you could try to jsonify parts of the data here for more granular logging
-        # For example:
-        # jsonify({"marcas": MARSAS_COLOMBIANAS}) # Test this
-        # jsonify({"audiencias": AUDIENCIAS_COLOMBIANAS}) # Test this
-        # jsonify({"campaign_goals": obtener_todos_los_campaign_goals()}) # Test this
-        return jsonify(data_to_return)
+        return jsonify(
+            marcas=MARCAS_COLOMBIANAS,
+            audiencias=AUDIENCIAS_COLOMBIANAS,
+            campaign_goals=obtener_todos_los_campaign_goals(),
+        )
     except Exception as e:
         logging.error(f"Error in get_market_data: {str(e)}")
         logging.error(traceback.format_exc())
@@ -62,6 +58,7 @@ def get_market_data():
 # Considerar unificar en el futuro si es conveniente.
 def get_interests_data():
     """Endpoint para obtener todos los intereses detallados."""
+    logging.debug("GET /api/interests-data")
     try:
         intereses = obtener_todos_los_intereses()
         return jsonify(intereses)
