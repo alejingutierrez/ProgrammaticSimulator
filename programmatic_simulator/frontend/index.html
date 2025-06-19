@@ -10,7 +10,8 @@
 <body>
     <div class="container">
         <h1>Simulador de Campañas Programáticas</h1>
-
+        <div class="layout">
+        <div class="controls">
         <div id="estimatedAudienceSizeContainer">
             <p>Estimated Targetable Audience: <span id="estimatedAudienceDisplay">N/A</span> <span id="audienceSizeChangeIndicator"></span></p>
         </div>
@@ -81,7 +82,8 @@
 
             <button type="submit">Simular Campaña</button>
         </form>
-
+        </div>
+        <div class="results-pane">
         <div id="resultsContainer" class="results-container" style="display:none;">
             <h2>Resultados de la Simulación</h2>
             <p><strong>Marca:</strong> <span id="resMarca"></span></p>
@@ -115,6 +117,8 @@
             </div>
             <hr>
             <p><em><span id="resMensaje"></span></em></p>
+        </div>
+        </div>
         </div>
     </div>
 
