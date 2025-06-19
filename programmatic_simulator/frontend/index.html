@@ -27,6 +27,13 @@
                 </select>
             </div>
 
+            <div class="form-group" id="productSelectionContainer" style="display:none;">
+                <label for="productos">Selecciona Productos (opcional):</label>
+                <select id="productos" name="productos" multiple disabled>
+                    <option value="" disabled>Selecciona una marca primero...</option>
+                </select>
+            </div>
+
             <div class="form-group">
                 <label for="audiencia">Selecciona una Audiencia:</label>
                 <select id="audiencia" name="audiencia" required disabled>
@@ -37,10 +44,10 @@
                 </div>
             </div>
 
-            <div class="form-group" id="productSelectionContainer" style="display:none;">
-                <label for="productos">Selecciona Productos (opcional):</label>
-                <select id="productos" name="productos" multiple disabled>
-                    <option value="" disabled>Selecciona una marca primero...</option>
+            <div class="form-group">
+                <label for="campaignGoal">Objetivo de la Campaña:</label>
+                <select id="campaignGoal" name="campaignGoal" required disabled>
+                    <option value="">Cargando objetivos...</option>
                 </select>
             </div>
 
@@ -49,13 +56,6 @@
                 <div id="interesesCheckboxContainer" class="checkbox-container disabled-selection-area">
                     <!-- Checkboxes will be populated here by JavaScript -->
                 </div>
-            </div>
-
-            <div class="form-group">
-                <label for="campaignGoal">Objetivo de la Campaña:</label>
-                <select id="campaignGoal" name="campaignGoal" required disabled>
-                    <option value="">Cargando objetivos...</option>
-                </select>
             </div>
 
             <div class="form-group">

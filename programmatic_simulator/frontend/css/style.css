@@ -16,8 +16,23 @@ body {
     padding: 25px;
     border-radius: 8px;
     box-shadow: 0 0 15px rgba(0,0,0,0.1);
-    width: 90%;
-    max-width: 600px;
+    width: 95%;
+    max-width: 1200px;
+}
+
+#campaignForm {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 20px;
+    align-items: start;
+}
+
+#campaignSummaryContainer,
+button[type="submit"],
+.results-container,
+#estimatedAudienceSizeContainer,
+#totalAffinityContainer {
+    grid-column: 1 / -1;
 }
 
 h1 {
