@@ -24,7 +24,8 @@ from .data.market_data import (
 )
 
 app = Flask(__name__)
-CORS(app) # Habilitar CORS para todas las rutas y orígenes
+app.config["JSON_AS_ASCII"] = False  # Ensure UTF-8 characters are returned properly
+CORS(app)  # Habilitar CORS para todas las rutas y orígenes
 
 logging.basicConfig(level=logging.DEBUG)
 
@@ -34,21 +35,22 @@ logging.basicConfig(level=logging.DEBUG)
 def home():
     return "Backend del Simulador Programático funcionando."
 
+
+@app.route('/api/health', methods=['GET'])
+def health_check():
+    """Simple health check endpoint to verify the API is running."""
+    return jsonify(status="ok")
+
 @app.route('/api/market-data', methods=['GET'])
 def get_market_data():
     """Endpoint para obtener los datos de mercado (marcas, audiencias y objetivos de campaña)."""
+    logging.debug("GET /api/market-data")
     try:
-        data_to_return = {
-            "marcas": MARCAS_COLOMBIANAS,
-            "audiencias": AUDIENCIAS_COLOMBIANAS,
-            "campaign_goals": obtener_todos_los_campaign_goals()
-        }
-        # Optionally, you could try to jsonify parts of the data here for more granular logging
-        # For example:
-        # jsonify({"marcas": MARSAS_COLOMBIANAS}) # Test this
-        # jsonify({"audiencias": AUDIENCIAS_COLOMBIANAS}) # Test this
-        # jsonify({"campaign_goals": obtener_todos_los_campaign_goals()}) # Test this
-        return jsonify(data_to_return)
+        return jsonify(
+            marcas=MARCAS_COLOMBIANAS,
+            audiencias=AUDIENCIAS_COLOMBIANAS,
+            campaign_goals=obtener_todos_los_campaign_goals(),
+        )
     except Exception as e:
         logging.error(f"Error in get_market_data: {str(e)}")
         logging.error(traceback.format_exc())
@@ -62,6 +64,7 @@ def get_market_data():
 # Considerar unificar en el futuro si es conveniente.
 def get_interests_data():
     """Endpoint para obtener todos los intereses detallados."""
+    logging.debug("GET /api/interests-data")
     try:
         intereses = obtener_todos_los_intereses()
         return jsonify(intereses)
@@ -138,7 +141,8 @@ def estimate_audience_size_endpoint():
 
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5001))
-    app.run(debug=True, port=port)
+    host = os.environ.get('HOST', '0.0.0.0')
+    app.run(debug=True, host=host, port=port)
 
 
 @app.route('/api/products/<brand_id>', methods=['GET'])

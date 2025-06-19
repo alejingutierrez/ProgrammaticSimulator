@@ -20,5 +20,11 @@ class TestMainAPI(unittest.TestCase):
         self.assertIsInstance(data, list)
         self.assertGreater(len(data), 0)
 
+    def test_health_endpoint(self):
+        resp = self.client.get('/api/health')
+        self.assertEqual(resp.status_code, 200)
+        data = resp.get_json()
+        self.assertEqual(data.get('status'), 'ok')
+
 if __name__ == '__main__':
     unittest.main()
