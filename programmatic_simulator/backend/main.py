@@ -1,9 +1,15 @@
 # programmatic_simulator/backend/main.py
 import os
+import sys
 import logging
 import traceback
 from flask import Flask, request, jsonify
-from flask_cors import CORS # Importar CORS
+from flask_cors import CORS  # Importar CORS
+
+# Permitir ejecutar este archivo directamente sin usar "-m".
+if __package__ in (None, ""):
+    sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..")))
+    __package__ = "programmatic_simulator.backend"
 from .simulator.campaign_logic import (
     simular_campana,
     _calculate_audience_size_details,
