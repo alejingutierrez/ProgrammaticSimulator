@@ -1,7 +1,7 @@
 # programmatic_simulator/backend/simulator/campaign_logic.py
 import random
 import math
-from data import market_data
+from ..data import market_data
 
 # --- Constantes de Simulación y Puntuación ---
 COSTO_POR_MIL_IMPRESIONES_BASE = 12000  # COP
