@@ -462,13 +462,25 @@ INTERESES_DETALLADOS = [
     {"id": "int_019", "nombre": "Ecommerce Especializado en Tecnología", "categoria_interes": "Compras Online"},
     {"id": "int_020", "nombre": "Realidad Virtual y Aumentada", "categoria_interes": "Tecnología"},
     {"id": "int_021", "nombre": "Domótica y Hogar Inteligente", "categoria_interes": "Tecnología"},
-    {"id": "int_022", "nombre": "Productos para el Hogar y Familia", "categoria_interes": "Hogar"},
-    {"id": "int_023", "nombre": "Educación de Hijos y Planificación Universitaria", "categoria_interes": "Familia"},
+    {
+        "id": "int_022", "nombre": "Productos para el Hogar y Familia", "categoria_interes": "Hogar",
+        "afinidad_marca": {"marca_006": 0.8, "marca_012": 0.6},
+        "afinidad_producto": {"prod_006_01": 0.75, "prod_006_02": 0.6}
+    },
+    {
+        "id": "int_023", "nombre": "Educación de Hijos y Planificación Universitaria", "categoria_interes": "Familia",
+        "afinidad_marca": {"marca_006": 0.7, "marca_012": 0.5},
+        "afinidad_producto": {"prod_006_03": 0.65}
+    },
     {"id": "int_024", "nombre": "Viajes Familiares y Vacaciones Escolares", "categoria_interes": "Viajes"},
     {"id": "int_025", "nombre": "Seguros de Vida y Salud", "categoria_interes": "Finanzas Personales"},
     {"id": "int_026", "nombre": "Alimentación Orgánica y Saludable", "categoria_interes": "Salud y Bienestar"},
     {"id": "int_027", "nombre": "Vehículos Familiares y SUVs", "categoria_interes": "Automotriz"},
-    {"id": "int_028", "nombre": "Mejoras del Hogar y Remodelación", "categoria_interes": "Hogar"},
+    {
+        "id": "int_028", "nombre": "Mejoras del Hogar y Remodelación", "categoria_interes": "Hogar",
+        "afinidad_marca": {"marca_006": 0.75, "marca_012": 0.55},
+        "afinidad_producto": {"prod_006_02": 0.7, "prod_006_01": 0.6}
+    },
     {"id": "int_029", "nombre": "Salud Preventiva y Bienestar Senior", "categoria_interes": "Salud y Bienestar"},
     {"id": "int_030", "nombre": "Viajes Culturales y Cruceros", "categoria_interes": "Viajes"},
     {"id": "int_031", "nombre": "Marketing Digital (SEO/SEM)", "categoria_interes": "Negocios"},

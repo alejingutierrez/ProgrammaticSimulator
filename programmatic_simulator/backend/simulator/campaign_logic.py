@@ -213,6 +213,7 @@ def calculate_total_affinity(marca_id, audiencia_id, selected_interes_ids=None, 
 def simular_campana(marca_id, audiencia_id, presupuesto, selected_interes_ids=None, campaign_goal_id=None, selected_product_ids=None, campaign_duration_days=None):
     marca = market_data.obtener_marca_por_id(marca_id)
     audiencia = market_data.obtener_audiencia_por_id(audiencia_id)
+    rng = random.Random(hash((marca_id, audiencia_id, presupuesto)) & 0xFFFFFFFF)
 
     goal_id_to_use = campaign_goal_id or DEFAULT_CAMPAIGN_GOAL_ID
     campaign_goal = market_data.obtener_campaign_goal_por_id(goal_id_to_use)
@@ -380,7 +381,7 @@ def simular_campana(marca_id, audiencia_id, presupuesto, selected_interes_ids=No
     ctr_actual = CTR_BASE_DEFAULT * GOAL_CTR_MODIFIERS.get(campaign_goal["id"], 1.0)
     ctr_final_calculado = ctr_actual * (1 + (efectividad_targeting_combinada * 1.5))
     ctr_final_calculado = max(0.0001, ctr_final_calculado)
-    clics = int(impresiones_efectivas * ctr_final_calculado * random.uniform(0.85, 1.15))
+    clics = int(impresiones_efectivas * ctr_final_calculado * rng.uniform(0.85, 1.15))
     impresiones = impresiones_efectivas
 
     interacciones_calculadas = 0
@@ -391,7 +392,7 @@ def simular_campana(marca_id, audiencia_id, presupuesto, selected_interes_ids=No
                           (1 + (afinidad_marca_audiencia * 0.5) + \
                            (interest_match_score * 0.75) + \
                            (GOAL_CTR_MODIFIERS.get(campaign_goal["id"], 1.0) - 1.0) * 0.5)
-        interacciones_calculadas = int(clics * engagement_rate * random.uniform(0.8, 1.2))
+        interacciones_calculadas = int(clics * engagement_rate * rng.uniform(0.8, 1.2))
     elif campaign_goal["id"] == "conversion":
         # Nueva fórmula de conversion_rate
         conversion_rate_base_multiplier = 1.0
@@ -407,7 +408,7 @@ def simular_campana(marca_id, audiencia_id, presupuesto, selected_interes_ids=No
         elif efectividad_targeting_combinada < 0.5: # General poor targeting (catches cases where one is low but not both, or no interests)
              conversion_rate *= 0.7
 
-        conversiones_calculadas = int(clics * conversion_rate * random.uniform(0.7, 1.3))
+        conversiones_calculadas = int(clics * conversion_rate * rng.uniform(0.7, 1.3))
         conversiones_calculadas = max(0, conversiones_calculadas)
 
     puntos_objetivo = 0
@@ -462,7 +463,7 @@ def simular_campana(marca_id, audiencia_id, presupuesto, selected_interes_ids=No
     elif presupuesto > PRESUPUESTO_ALTO: puntuacion_actual += PUNTOS_PRESUESTO_ALTO
 
     puntuacion_actual = max(1.0, min(10.0, puntuacion_actual))
-    ruido_mercado = random.choice([-0.5, 0, 0, 0, 0.5])
+    ruido_mercado = rng.choice([-0.5, 0, 0, 0, 0.5])
     puntuacion_final_con_ruido = round(max(1.0, min(10.0, puntuacion_actual + ruido_mercado)))
 
     # --- Feedback generation ---
