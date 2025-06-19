@@ -35,6 +35,12 @@ logging.basicConfig(level=logging.DEBUG)
 def home():
     return "Backend del Simulador Programático funcionando."
 
+
+@app.route('/api/health', methods=['GET'])
+def health_check():
+    """Simple health check endpoint to verify the API is running."""
+    return jsonify(status="ok")
+
 @app.route('/api/market-data', methods=['GET'])
 def get_market_data():
     """Endpoint para obtener los datos de mercado (marcas, audiencias y objetivos de campaña)."""
@@ -135,7 +141,8 @@ def estimate_audience_size_endpoint():
 
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5001))
-    app.run(debug=True, port=port)
+    host = os.environ.get('HOST', '0.0.0.0')
+    app.run(debug=True, host=host, port=port)
 
 
 @app.route('/api/products/<brand_id>', methods=['GET'])
