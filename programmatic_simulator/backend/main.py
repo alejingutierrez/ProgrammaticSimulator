@@ -1,4 +1,6 @@
 # programmatic_simulator/backend/main.py
+import logging
+import traceback
 from flask import Flask, request, jsonify
 from flask_cors import CORS # Importar CORS
 from simulator.campaign_logic import simular_campana, _calculate_audience_size_details, calculate_total_affinity # Importar la nueva función
@@ -6,6 +8,8 @@ from data.market_data import MARCAS_COLOMBIANAS, AUDIENCIAS_COLOMBIANAS, obtener
 
 app = Flask(__name__)
 CORS(app) # Habilitar CORS para todas las rutas y orígenes
+
+logging.basicConfig(level=logging.DEBUG)
 
 # Dummy function calculate_audience_size has been removed.
 
@@ -16,11 +20,24 @@ def home():
 @app.route('/api/market-data', methods=['GET'])
 def get_market_data():
     """Endpoint para obtener los datos de mercado (marcas, audiencias y objetivos de campaña)."""
-    return jsonify({
-        "marcas": MARCAS_COLOMBIANAS,
-        "audiencias": AUDIENCIAS_COLOMBIANAS,
-        "campaign_goals": obtener_todos_los_campaign_goals() # Añadir objetivos de campaña
-    })
+    try:
+        data_to_return = {
+            "marcas": MARCAS_COLOMBIANAS,
+            "audiencias": AUDIENCIAS_COLOMBIANAS,
+            "campaign_goals": obtener_todos_los_campaign_goals()
+        }
+        # Optionally, you could try to jsonify parts of the data here for more granular logging
+        # For example:
+        # jsonify({"marcas": MARSAS_COLOMBIANAS}) # Test this
+        # jsonify({"audiencias": AUDIENCIAS_COLOMBIANAS}) # Test this
+        # jsonify({"campaign_goals": obtener_todos_los_campaign_goals()}) # Test this
+        return jsonify(data_to_return)
+    except Exception as e:
+        logging.error(f"Error in get_market_data: {str(e)}")
+        logging.error(traceback.format_exc())
+        # You could try to identify which part failed if you broke it down
+        # For now, just return a more informative error
+        return jsonify({"error": "Server error during JSON serialization in get_market_data", "details": str(e)}), 500
 
 @app.route('/api/interests-data', methods=['GET'])
 # Este endpoint podría quedar obsoleto si los intereses se sirven desde /api/market-data,
@@ -28,8 +45,13 @@ def get_market_data():
 # Considerar unificar en el futuro si es conveniente.
 def get_interests_data():
     """Endpoint para obtener todos los intereses detallados."""
-    intereses = obtener_todos_los_intereses()
-    return jsonify(intereses)
+    try:
+        intereses = obtener_todos_los_intereses()
+        return jsonify(intereses)
+    except Exception as e:
+        logging.error(f"Error in get_interests_data: {str(e)}")
+        logging.error(traceback.format_exc())
+        return jsonify({"error": "Server error during JSON serialization in get_interests_data", "details": str(e)}), 500
 
 @app.route('/api/simular', methods=['POST'])
 def api_simular_campana():
