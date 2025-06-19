@@ -1,6 +1,7 @@
 # programmatic_simulator/backend/simulator/campaign_logic.py
 import random
 import math
+import hashlib
 from ..data import market_data
 
 # --- Constantes de Simulación y Puntuación ---
@@ -213,7 +214,11 @@ def calculate_total_affinity(marca_id, audiencia_id, selected_interes_ids=None, 
 def simular_campana(marca_id, audiencia_id, presupuesto, selected_interes_ids=None, campaign_goal_id=None, selected_product_ids=None, campaign_duration_days=None):
     marca = market_data.obtener_marca_por_id(marca_id)
     audiencia = market_data.obtener_audiencia_por_id(audiencia_id)
-    rng = random.Random(hash((marca_id, audiencia_id, presupuesto)) & 0xFFFFFFFF)
+    # Use a deterministic seed for reproducible simulations across Python runs.
+    # Built-in ``hash`` is randomized between processes, so rely on hashlib.
+    seed_str = f"{marca_id}-{audiencia_id}-{presupuesto}"
+    seed = int(hashlib.md5(seed_str.encode()).hexdigest(), 16) & 0xFFFFFFFF
+    rng = random.Random(seed)
 
     goal_id_to_use = campaign_goal_id or DEFAULT_CAMPAIGN_GOAL_ID
     campaign_goal = market_data.obtener_campaign_goal_por_id(goal_id_to_use)
@@ -381,18 +386,22 @@ def simular_campana(marca_id, audiencia_id, presupuesto, selected_interes_ids=No
     ctr_actual = CTR_BASE_DEFAULT * GOAL_CTR_MODIFIERS.get(campaign_goal["id"], 1.0)
     ctr_final_calculado = ctr_actual * (1 + (efectividad_targeting_combinada * 1.5))
     ctr_final_calculado = max(0.0001, ctr_final_calculado)
-    clics = int(impresiones_efectivas * ctr_final_calculado * rng.uniform(0.85, 1.15))
+    random_factor_clicks = rng.uniform(0.85, 1.15)
+    clics = int(impresiones_efectivas * ctr_final_calculado * random_factor_clicks)
     impresiones = impresiones_efectivas
 
     interacciones_calculadas = 0
     conversiones_calculadas = 0
     if campaign_goal["id"] == "engagement":
         # Nueva fórmula de engagement_rate
-        engagement_rate = BASE_ENGAGEMENT_RATE_PER_CLICK * \
-                          (1 + (afinidad_marca_audiencia * 0.5) + \
-                           (interest_match_score * 0.75) + \
-                           (GOAL_CTR_MODIFIERS.get(campaign_goal["id"], 1.0) - 1.0) * 0.5)
-        interacciones_calculadas = int(clics * engagement_rate * rng.uniform(0.8, 1.2))
+        engagement_rate = (
+            BASE_ENGAGEMENT_RATE_PER_CLICK
+            * (1 + (afinidad_marca_audiencia * 0.5) + (interest_match_score * 0.75)
+               + (GOAL_CTR_MODIFIERS.get(campaign_goal["id"], 1.0) - 1.0) * 0.5)
+        )
+        # Use the same random factor as clicks so the effective rate reflects
+        # differences in engagement inputs rather than random noise.
+        interacciones_calculadas = int(clics * engagement_rate * random_factor_clicks)
     elif campaign_goal["id"] == "conversion":
         # Nueva fórmula de conversion_rate
         conversion_rate_base_multiplier = 1.0
