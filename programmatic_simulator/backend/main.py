@@ -1,10 +1,21 @@
 # programmatic_simulator/backend/main.py
+import os
 import logging
 import traceback
 from flask import Flask, request, jsonify
 from flask_cors import CORS # Importar CORS
-from simulator.campaign_logic import simular_campana, _calculate_audience_size_details, calculate_total_affinity # Importar la nueva función
-from data.market_data import MARCAS_COLOMBIANAS, AUDIENCIAS_COLOMBIANAS, obtener_todos_los_intereses, obtener_todos_los_campaign_goals, obtener_marca_por_id # Importar obtener_marca_por_id
+from .simulator.campaign_logic import (
+    simular_campana,
+    _calculate_audience_size_details,
+    calculate_total_affinity,
+)
+from .data.market_data import (
+    MARCAS_COLOMBIANAS,
+    AUDIENCIAS_COLOMBIANAS,
+    obtener_todos_los_intereses,
+    obtener_todos_los_campaign_goals,
+    obtener_marca_por_id,
+)
 
 app = Flask(__name__)
 CORS(app) # Habilitar CORS para todas las rutas y orígenes
@@ -120,8 +131,8 @@ def estimate_audience_size_endpoint():
     return jsonify(response_data)
 
 if __name__ == '__main__':
-    # Puerto 5001 para evitar conflictos comunes con el puerto 5000
-    app.run(debug=True, port=5001)
+    port = int(os.environ.get('PORT', 5001))
+    app.run(debug=True, port=port)
 
 
 @app.route('/api/products/<brand_id>', methods=['GET'])
