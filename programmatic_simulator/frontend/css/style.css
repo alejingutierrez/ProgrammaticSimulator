@@ -72,7 +72,14 @@ body {
 
 .layout {
     display: flex;
+    flex-direction: column; /* Mobile first stacking */
     gap: var(--space-5);
+}
+
+@media (min-width: 768px) {
+    .layout {
+        flex-direction: row;
+    }
 }
 
 .controls {
@@ -84,6 +91,13 @@ body {
 
 .results-pane {
     flex: 1;
+    width: 100%;
+}
+
+@media (min-width: 768px) {
+    .results-pane {
+        width: auto;
+    }
 }
 
 .results-pane .results-container {
@@ -94,9 +108,15 @@ body {
 
 #campaignForm {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-    gap: 20px;
+    grid-template-columns: 1fr; /* Mobile first single column */
+    gap: var(--space-5);
     align-items: start;
+}
+
+@media (min-width: 600px) {
+    #campaignForm {
+        grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    }
 }
 
 #campaignSummaryContainer,
@@ -171,12 +191,26 @@ label.required::after {
 }
 
 .form-group select,
-.form-group input[type="number"] {
+.form-group input[type="number"],
+.form-group input[type="date"],
+input[type="range"] {
     width: 100%;
     padding: var(--space-3);
     border: 1px solid var(--color-border);
     border-radius: var(--radius-sm);
     box-sizing: border-box; /* Para que padding no afecte el width total */
+    min-height: 44px; /* Adecuado para control tactil */
+}
+
+input[type="range"] {
+    height: 44px;
+    padding: 0;
+}
+
+input[type="range"]::-webkit-slider-thumb,
+input[type="range"]::-moz-range-thumb {
+    width: 24px;
+    height: 24px;
 }
 
 /* Styling for the new checkbox container */
@@ -197,6 +231,8 @@ label.required::after {
 .checkbox-item input[type="checkbox"] {
     margin-right: var(--space-2); /* Space between checkbox and label */
     vertical-align: middle; /* Align checkbox with text */
+    width: 20px;
+    height: 20px;
 }
 
 
