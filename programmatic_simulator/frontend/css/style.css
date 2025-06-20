@@ -32,6 +32,15 @@
     --font-family-base: sans-serif;
 }
 
+/* Wizard steps */
+.wizard-step {
+    display: none;
+}
+
+.wizard-step.active {
+    display: block;
+}
+
 /* Example dark theme */
 [data-theme="dark"] {
     --color-background: #1a1a1a;

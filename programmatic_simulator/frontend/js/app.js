@@ -21,11 +21,27 @@ document.addEventListener('DOMContentLoaded', () => {
     const campaignDurationDisplay = document.getElementById('campaignDurationDisplay');
     const totalCampaignBudgetDisplay = document.getElementById('totalCampaignBudgetDisplay');
     const resetFormBtn = document.getElementById('resetFormBtn');
+    const stepConfig = document.getElementById('stepConfig');
+    const stepResults = document.getElementById('stepResults');
+    const backToConfigBtn = document.getElementById('backToConfigBtn');
 
 
     let allAudiencesData = []; // Variable para almacenar datos de audiencias
     let allBrandsData = []; // Variable para almacenar datos de marcas con sus productos
     let previousAudienceSize = null; // Variable to store the previous audience size
+
+    function showConfigStep() {
+        if (stepConfig) stepConfig.classList.add('active');
+        if (stepResults) stepResults.classList.remove('active');
+    }
+
+    function showResultsStep() {
+        if (stepConfig) stepConfig.classList.remove('active');
+        if (stepResults) stepResults.classList.add('active');
+    }
+
+    // Ensure initial state
+    showConfigStep();
 
     // Actualizado para coincidir con los nuevos campos en index.html
     const originalResultsHTML = `
@@ -201,13 +217,14 @@ document.addEventListener('DOMContentLoaded', () => {
             }
 
             const data = await response.json();
-            // Pass dailyInvestment and duration to displayResults or make them accessible globally/scoped
             displayResults(data, dailyInvestmentFromForm, durationFromForm);
+            showResultsStep();
 
         } catch (error) {
             console.error('Error al simular campaña:', error);
             // Pass null or undefined for extra params if error occurs before they are set
             displayResults({ error: error.message || "No se pudo conectar con el servidor de simulación." }, dailyInvestmentFromForm, durationFromForm);
+            showResultsStep();
         }
     });
 
@@ -800,6 +817,13 @@ document.addEventListener('DOMContentLoaded', () => {
             }
             updateCampaignSummary();
             updateFormAccess();
+            showConfigStep();
+        });
+    }
+
+    if (backToConfigBtn) {
+        backToConfigBtn.addEventListener('click', () => {
+            showConfigStep();
         });
     }
 
