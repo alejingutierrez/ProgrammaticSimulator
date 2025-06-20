@@ -87,36 +87,44 @@
         <div class="results-pane">
         <div id="resultsContainer" class="results-container" style="display:none;">
             <h2>Resultados de la Simulación</h2>
-            <p><strong>Marca:</strong> <span id="resMarca"></span></p>
-            <p><strong>Audiencia:</strong> <span id="resAudiencia"></span></p>
-            <p><strong>Productos Seleccionados:</strong> <span id="resProductosSeleccionados"></span></p>
-            <p><strong>Objetivo de Campaña:</strong> <span id="resCampaignGoal"></span></p>
-            <p><strong>Inversión por día (COP):</strong> <span id="resInversionPorDia"></span></p>
-            <p><strong>Duración de la campaña:</strong> <span id="resDuracionCampana"></span> días</p>
-            <p><strong>Presupuesto Total Estimado (COP):</strong> <span id="resPresupuestoInicial"></span></p>
-            <hr>
-            <p class="score"><strong>Puntuación de la Campaña:</strong> <span id="resPuntuacion"></span> / 10</p>
-            <p><strong>Afinidad Marca-Audiencia:</strong> <span id="resAfinidad"></span></p>
-            <p><strong>Coincidencia de Intereses:</strong> <span id="resMatchIntereses"></span></p>
-            <p><strong>Intereses Seleccionados:</strong> <span id="resInteresesSeleccionados"></span></p>
-            <hr>
-            <p><strong>Impresiones Estimadas:</strong> <span id="resImpresiones"></span></p>
-            <p><strong>Clics Estimados:</strong> <span id="resClics"></span></p>
-            <p><strong>CTR Calculado:</strong> <span id="resCTR"></span>%</p>
-            <p><strong>Interacciones Estimadas:</strong> <span id="resInteracciones"></span></p>
-            <p><strong>Conversiones Estimadas:</strong> <span id="resConversiones"></span></p>
-            <p><strong>CPM Calculado (COP):</strong> <span id="resCPM"></span></p>
-            <p><strong>CPC Calculado (COP):</strong> <span id="resCPC"></span></p>
-            <p><strong>Presupuesto Gastado (COP):</strong> <span id="resPresupuestoGastado"></span></p>
+            <div class="summary">
+                <p><strong>Marca:</strong> <span id="resMarca"></span></p>
+                <p><strong>Audiencia:</strong> <span id="resAudiencia"></span></p>
+                <p><strong>Objetivo de Campaña:</strong> <span id="resCampaignGoal"></span></p>
+            </div>
+
+            <div class="metrics-dashboard">
+                <div class="metric-card" id="scoreCard">
+                    <div class="metric-title">Puntuación</div>
+                    <div class="metric-circle"><span id="resPuntuacion"></span></div>
+                </div>
+                <div class="metric-card" id="affinityCard">
+                    <div class="metric-title">Afinidad</div>
+                    <div class="metric-circle"><span id="resAfinidad"></span></div>
+                </div>
+                <div class="metric-card" id="impressionsCard">
+                    <div class="metric-title">Impresiones</div>
+                    <div class="metric-bar"><div class="metric-bar-fill" id="impressionsFill"></div></div>
+                    <div class="metric-number" id="resImpresiones"></div>
+                </div>
+                <div class="metric-card" id="ctrCard">
+                    <div class="metric-title">CTR</div>
+                    <div class="metric-bar"><div class="metric-bar-fill" id="ctrFill"></div></div>
+                    <div class="metric-number"><span id="resCTR"></span>%</div>
+                </div>
+                <div class="metric-card" id="budgetCard">
+                    <div class="metric-title">Presupuesto Gastado</div>
+                    <div class="metric-bar"><div class="metric-bar-fill" id="budgetFill"></div></div>
+                    <div class="metric-number" id="resPresupuestoGastado"></div>
+                </div>
+            </div>
 
             <div id="detailedFeedbackSection" style="display:none; margin-top: 15px;">
-                <hr>
                 <h4>Sugerencias y Comentarios Detallados:</h4>
                 <ul id="feedbackList" class="feedback-list">
                     <!-- Feedback messages will be populated here by JavaScript -->
                 </ul>
             </div>
-            <hr>
             <p><em><span id="resMensaje"></span></em></p>
         </div>
         </div>

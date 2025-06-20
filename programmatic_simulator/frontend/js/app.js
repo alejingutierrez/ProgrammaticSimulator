@@ -30,36 +30,42 @@ document.addEventListener('DOMContentLoaded', () => {
     // Actualizado para coincidir con los nuevos campos en index.html
     const originalResultsHTML = `
             <h2>Resultados de la Simulación</h2>
-            <p><strong>Marca:</strong> <span id="resMarca"></span></p>
-            <p><strong>Audiencia:</strong> <span id="resAudiencia"></span></p>
-            <p><strong>Productos Seleccionados:</strong> <span id="resProductosSeleccionados"></span></p>
-            <p><strong>Objetivo de Campaña:</strong> <span id="resCampaignGoal"></span></p>
-            <p><strong>Inversión por día (COP):</strong> <span id="resInversionPorDia"></span></p>
-            <p><strong>Duración de la campaña:</strong> <span id="resDuracionCampana"></span> días</p>
-            <p><strong>Presupuesto Total Estimado (COP):</strong> <span id="resPresupuestoInicial"></span></p>
-            <hr>
-            <p class="score"><strong>Puntuación de la Campaña:</strong> <span id="resPuntuacion"></span> / 10</p>
-            <p><strong>Afinidad Marca-Audiencia:</strong> <span id="resAfinidad"></span></p>
-            <p><strong>Coincidencia de Intereses:</strong> <span id="resMatchIntereses"></span></p>
-            <p><strong>Intereses Seleccionados:</strong> <span id="resInteresesSeleccionados"></span></p>
-            <hr>
-            <p><strong>Impresiones Estimadas:</strong> <span id="resImpresiones"></span></p>
-            <p><strong>Clics Estimados:</strong> <span id="resClics"></span></p>
-            <p><strong>CTR Calculado:</strong> <span id="resCTR"></span>%</p>
-            <p><strong>Interacciones Estimadas:</strong> <span id="resInteracciones"></span></p>
-            <p><strong>Conversiones Estimadas:</strong> <span id="resConversiones"></span></p>
-            <p><strong>CPM Calculado (COP):</strong> <span id="resCPM"></span></p>
-            <p><strong>CPC Calculado (COP):</strong> <span id="resCPC"></span></p>
-            <p><strong>Presupuesto Gastado (COP):</strong> <span id="resPresupuestoGastado"></span></p>
-
+            <div class="summary">
+                <p><strong>Marca:</strong> <span id="resMarca"></span></p>
+                <p><strong>Audiencia:</strong> <span id="resAudiencia"></span></p>
+                <p><strong>Objetivo de Campaña:</strong> <span id="resCampaignGoal"></span></p>
+            </div>
+            <div class="metrics-dashboard">
+                <div class="metric-card" id="scoreCard">
+                    <div class="metric-title">Puntuación</div>
+                    <div class="metric-circle"><span id="resPuntuacion"></span></div>
+                </div>
+                <div class="metric-card" id="affinityCard">
+                    <div class="metric-title">Afinidad</div>
+                    <div class="metric-circle"><span id="resAfinidad"></span></div>
+                </div>
+                <div class="metric-card" id="impressionsCard">
+                    <div class="metric-title">Impresiones</div>
+                    <div class="metric-bar"><div class="metric-bar-fill" id="impressionsFill"></div></div>
+                    <div class="metric-number" id="resImpresiones"></div>
+                </div>
+                <div class="metric-card" id="ctrCard">
+                    <div class="metric-title">CTR</div>
+                    <div class="metric-bar"><div class="metric-bar-fill" id="ctrFill"></div></div>
+                    <div class="metric-number"><span id="resCTR"></span>%</div>
+                </div>
+                <div class="metric-card" id="budgetCard">
+                    <div class="metric-title">Presupuesto Gastado</div>
+                    <div class="metric-bar"><div class="metric-bar-fill" id="budgetFill"></div></div>
+                    <div class="metric-number" id="resPresupuestoGastado"></div>
+                </div>
+            </div>
             <div id="detailedFeedbackSection" style="display:none; margin-top: 15px;">
-                <hr>
                 <h4>Sugerencias y Comentarios Detallados:</h4>
                 <ul id="feedbackList" class="feedback-list">
                     <!-- Feedback messages will be populated here by JavaScript -->
                 </ul>
             </div>
-            <hr>
             <p><em><span id="resMensaje"></span></em></p>
     `;
 
@@ -241,61 +247,64 @@ document.addEventListener('DOMContentLoaded', () => {
             document.getElementById('resMarca').textContent = data.marca_nombre || 'N/A';
             document.getElementById('resAudiencia').textContent = data.audiencia_nombre || 'N/A';
 
-            const resProductosSeleccionadosSpan = document.getElementById('resProductosSeleccionados');
-            const formSelectedProductIds = Array.from(productosSelect.options)
-                                           .filter(option => option.selected && option.value !== "")
-                                           .map(option => option.value);
-            if (formSelectedProductIds.length > 0 && allBrandsData.length > 0) {
-                const selectedBrand = allBrandsData.find(brand => brand.id === marcaSelect.value);
-                if (selectedBrand && selectedBrand.productos) {
-                    const productNames = formSelectedProductIds.map(pId => {
-                        const product = selectedBrand.productos.find(prod => prod.id === pId);
-                        return product ? product.nombre : pId;
-                    });
-                    resProductosSeleccionadosSpan.textContent = productNames.join(', ');
-                } else {
-                    resProductosSeleccionadosSpan.textContent = formSelectedProductIds.join(', ');
-                }
-            } else {
-                resProductosSeleccionadosSpan.textContent = 'Ninguno';
-            }
-
             document.getElementById('resCampaignGoal').textContent = data.campaign_goal_nombre || 'N/A';
 
-            // Display daily investment and duration from form, total budget from simulation response
-            const resInversionPorDiaEl = document.getElementById('resInversionPorDia');
-            if (resInversionPorDiaEl && dailyInvestment !== undefined) {
-                 resInversionPorDiaEl.textContent = dailyInvestment.toLocaleString('es-CO', { style: 'currency', currency: 'COP', minimumFractionDigits: 0 });
-            } else if (resInversionPorDiaEl) {
-                 resInversionPorDiaEl.textContent = 'N/A';
-            }
-
-            const resDuracionCampanaEl = document.getElementById('resDuracionCampana');
-            if (resDuracionCampanaEl && campaignDuration !== undefined) {
-                resDuracionCampanaEl.textContent = campaignDuration;
-            } else if (resDuracionCampanaEl) {
-                resDuracionCampanaEl.textContent = 'N/A';
-            }
-
-            // resPresupuestoInicial now shows the total budget received from the backend
-            document.getElementById('resPresupuestoInicial').textContent = data.presupuesto_inicial?.toLocaleString('es-CO', { style: 'currency', currency: 'COP' }) || 'N/A';
             document.getElementById('resPuntuacion').textContent = data.puntuacion !== undefined ? data.puntuacion : 'N/A';
-
             document.getElementById('resAfinidad').textContent = data.afinidad_marca_audiencia !== undefined ? (data.afinidad_marca_audiencia * 100).toFixed(0) + '%' : 'N/A';
-            document.getElementById('resMatchIntereses').textContent = data.interest_match_score !== undefined ? (data.interest_match_score * 100).toFixed(0) + '%' : 'N/A';
-            document.getElementById('resInteresesSeleccionados').textContent = data.selected_intereses_nombres && data.selected_intereses_nombres.length > 0 ? data.selected_intereses_nombres.join(', ') : 'Ninguno';
-
             document.getElementById('resImpresiones').textContent = data.impresiones?.toLocaleString('es-CO') || 'N/A';
-            document.getElementById('resClics').textContent = data.clics?.toLocaleString('es-CO') || 'N/A';
-            // Mostrar CTR calculado, interacciones y conversiones
             document.getElementById('resCTR').textContent = data.ctr_calculado !== undefined ? (data.ctr_calculado * 100).toFixed(3) : 'N/A';
-            document.getElementById('resInteracciones').textContent = data.interacciones_calculadas?.toLocaleString('es-CO') || 'N/A';
-            document.getElementById('resConversiones').textContent = data.conversiones_calculadas?.toLocaleString('es-CO') || 'N/A';
-
-            document.getElementById('resCPM').textContent = data.cpm_calculado?.toLocaleString('es-CO', { style: 'currency', currency: 'COP', minimumFractionDigits: 0 }) || 'N/A';
-            document.getElementById('resCPC').textContent = data.cpc_calculado?.toLocaleString('es-CO', { style: 'currency', currency: 'COP', minimumFractionDigits: 0 }) || 'N/A';
             document.getElementById('resPresupuestoGastado').textContent = data.presupuesto_gastado?.toLocaleString('es-CO', { style: 'currency', currency: 'COP' }) || 'N/A';
             document.getElementById('resMensaje').textContent = data.mensaje || '';
+
+            const scoreCard = document.getElementById('scoreCard');
+            const affinityCard = document.getElementById('affinityCard');
+            const impressionsCard = document.getElementById('impressionsCard');
+            const ctrCard = document.getElementById('ctrCard');
+            const budgetCard = document.getElementById('budgetCard');
+
+            const impressionsFill = document.getElementById('impressionsFill');
+            const ctrFill = document.getElementById('ctrFill');
+            const budgetFill = document.getElementById('budgetFill');
+
+            function getPerfClass(val, good, regular) {
+                if (val === undefined || val === null || isNaN(val)) return '';
+                if (val >= good) return 'metric-good';
+                if (val >= regular) return 'metric-regular';
+                return 'metric-bad';
+            }
+
+            const score = data.puntuacion;
+            if (scoreCard) {
+                scoreCard.classList.remove('metric-good','metric-regular','metric-bad');
+                scoreCard.classList.add(getPerfClass(score, 8, 5));
+            }
+
+            const affinity = data.afinidad_marca_audiencia;
+            if (affinityCard) {
+                affinityCard.classList.remove('metric-good','metric-regular','metric-bad');
+                affinityCard.classList.add(getPerfClass(affinity, 0.7, 0.4));
+            }
+
+            const impressionsRatio = data.refined_potential_audience_size ? data.impresiones / data.refined_potential_audience_size : 0;
+            if (impressionsFill) impressionsFill.style.width = Math.min(100, Math.max(0, impressionsRatio * 100)) + '%';
+            if (impressionsCard) {
+                impressionsCard.classList.remove('metric-good','metric-regular','metric-bad');
+                impressionsCard.classList.add(getPerfClass(impressionsRatio, 0.7, 0.4));
+            }
+
+            const ctr = data.ctr_calculado;
+            if (ctrFill) ctrFill.style.width = Math.min(100, Math.max(0, ctr * 4000)) + '%';
+            if (ctrCard) {
+                ctrCard.classList.remove('metric-good','metric-regular','metric-bad');
+                ctrCard.classList.add(getPerfClass(ctr, 0.02, 0.01));
+            }
+
+            const budgetRatio = data.presupuesto_inicial ? data.presupuesto_gastado / data.presupuesto_inicial : 0;
+            if (budgetFill) budgetFill.style.width = Math.min(100, Math.max(0, budgetRatio * 100)) + '%';
+            if (budgetCard) {
+                budgetCard.classList.remove('metric-good','metric-regular','metric-bad');
+                budgetCard.classList.add(getPerfClass(budgetRatio, 0.8, 0.5));
+            }
 
             // Populate Feedback List
             const feedbackListUl = document.getElementById('feedbackList');
