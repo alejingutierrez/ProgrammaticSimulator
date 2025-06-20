@@ -16,7 +16,7 @@
             <p>Estimated Targetable Audience: <span id="estimatedAudienceDisplay">N/A</span> <span id="audienceSizeChangeIndicator"></span></p>
         </div>
 
-        <div id="totalAffinityContainer" style="margin-top: 10px; margin-bottom: 10px;">
+        <div id="totalAffinityContainer">
             <p>Total Estimated Affinity: <span id="totalAffinityDisplay">N/A</span></p>
         </div>
 
@@ -74,14 +74,14 @@
                 <input type="date" id="fechaFin" name="fechaFin" required disabled>
             </div>
 
-            <div id="campaignSummaryContainer" style="margin-top: 10px; padding: 10px; background-color: #f0f0f0; border-radius: 5px;">
+            <div id="campaignSummaryContainer">
                 <h4>Resumen de Campaña Estimado:</h4>
                 <p>Duración de la campaña: <span id="campaignDurationDisplay">N/A</span> días</p>
                 <p>Presupuesto total estimado: <span id="totalCampaignBudgetDisplay">N/A</span> COP</p>
             </div>
 
-            <button type="submit">Simular Campaña</button>
-            <button type="button" id="resetFormBtn">Limpiar Formulario</button>
+            <button type="submit" class="btn btn-primary">Simular Campaña</button>
+            <button type="button" id="resetFormBtn" class="btn btn-secondary">Limpiar Formulario</button>
         </form>
         </div>
         <div class="results-pane">

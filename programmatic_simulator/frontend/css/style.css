@@ -1,20 +1,70 @@
+:root {
+    /* Color palette */
+    --color-background: #f4f4f4;
+    --color-surface: #ffffff;
+    --color-text: #333333;
+    --color-heading: #333333;
+    --color-subheading: #555555;
+    --color-primary: #007bff;
+    --color-primary-hover: #0056b3;
+    --color-secondary: #6c757d;
+    --color-secondary-hover: #5a6268;
+    --color-border: #dddddd;
+    --color-border-light: #cccccc;
+    --color-results-bg: #e9ecef;
+    --color-results-border: #ced4da;
+    --color-badge-bg: #f0f9ff;
+    --color-badge-border: #cce5ff;
+    --color-muted: #888888;
+
+    /* Spacing scale */
+    --space-1: 4px;
+    --space-2: 8px;
+    --space-3: 12px;
+    --space-4: 16px;
+    --space-5: 20px;
+    --space-6: 24px;
+    --space-7: 32px;
+
+    /* Other tokens */
+    --radius-sm: 4px;
+    --radius-md: 5px;
+    --font-family-base: sans-serif;
+}
+
+/* Example dark theme */
+[data-theme="dark"] {
+    --color-background: #1a1a1a;
+    --color-surface: #242424;
+    --color-text: #f2f2f2;
+    --color-heading: #ffffff;
+    --color-subheading: #dddddd;
+    --color-border: #555555;
+    --color-border-light: #444444;
+    --color-results-bg: #333333;
+    --color-results-border: #444444;
+    --color-badge-bg: #333333;
+    --color-badge-border: #555555;
+    --color-muted: #bbbbbb;
+}
+
 body {
-    font-family: sans-serif;
+    font-family: var(--font-family-base);
     margin: 0;
-    background-color: #f4f4f4;
-    color: #333;
+    background-color: var(--color-background);
+    color: var(--color-text);
     display: flex;
     justify-content: center;
     align-items: flex-start; /* Alinea al inicio para scrolls largos */
     min-height: 100vh;
-    padding-top: 20px; /* Espacio superior */
-    padding-bottom: 20px; /* Espacio inferior */
+    padding-top: var(--space-5); /* Espacio superior */
+    padding-bottom: var(--space-5); /* Espacio inferior */
 }
 
 .container {
-    background-color: #fff;
-    padding: 25px;
-    border-radius: 8px;
+    background-color: var(--color-surface);
+    padding: var(--space-5);
+    border-radius: var(--radius-md);
     box-shadow: 0 0 15px rgba(0,0,0,0.1);
     width: 95%;
     max-width: 1200px;
@@ -22,14 +72,14 @@ body {
 
 .layout {
     display: flex;
-    gap: 20px;
+    gap: var(--space-5);
 }
 
 .controls {
     flex: 3;
     display: flex;
     flex-direction: column;
-    gap: 20px;
+    gap: var(--space-5);
 }
 
 .results-pane {
@@ -58,35 +108,47 @@ button[type="submit"],
     grid-column: 1 / -1;
 }
 
+#campaignSummaryContainer {
+    margin-top: var(--space-3);
+    padding: var(--space-3);
+    background-color: var(--color-results-bg);
+    border-radius: var(--radius-md);
+}
+
+#totalAffinityContainer {
+    margin-top: var(--space-2);
+    margin-bottom: var(--space-2);
+}
+
 h1 {
-    color: #333;
+    color: var(--color-heading);
     text-align: center;
-    margin-bottom: 20px;
+    margin-bottom: var(--space-5);
 }
 
 h2 {
-    color: #555;
+    color: var(--color-subheading);
     text-align: center;
-    margin-top: 30px;
-    margin-bottom: 15px;
+    margin-top: var(--space-6);
+    margin-bottom: var(--space-4);
 }
 
 .form-group {
-    margin-bottom: 15px;
+    margin-bottom: var(--space-4);
 }
 
 .form-group label {
     display: block;
-    margin-bottom: 5px;
+    margin-bottom: var(--space-2);
     font-weight: bold;
 }
 
 .form-group select,
 .form-group input[type="number"] {
     width: 100%;
-    padding: 10px;
-    border: 1px solid #ddd;
-    border-radius: 4px;
+    padding: var(--space-3);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-sm);
     box-sizing: border-box; /* Para que padding no afecte el width total */
 }
 
@@ -94,103 +156,124 @@ h2 {
 .checkbox-container {
     max-height: 150px; /* Or your desired height */
     overflow-y: auto;
-    border: 1px solid #ccc;
-    padding: 10px; /* Increased padding a bit */
-    border-radius: 4px; /* Added border-radius for consistency */
-    background-color: #fff; /* Ensure background is white */
+    border: 1px solid var(--color-border-light);
+    padding: var(--space-3); /* Increased padding a bit */
+    border-radius: var(--radius-sm); /* Added border-radius for consistency */
+    background-color: var(--color-surface); /* Ensure background is white */
 }
 
 .checkbox-item {
     display: block; /* Makes each checkbox appear on a new line */
-    margin-bottom: 5px; /* Space between items */
+    margin-bottom: var(--space-2); /* Space between items */
 }
 
 .checkbox-item input[type="checkbox"] {
-    margin-right: 8px; /* Space between checkbox and label */
+    margin-right: var(--space-2); /* Space between checkbox and label */
     vertical-align: middle; /* Align checkbox with text */
 }
+
 
 .checkbox-item label {
     font-weight: normal; /* Labels inside checkbox container might not need to be bold */
     vertical-align: middle;
 }
 
-
-button[type="submit"] {
-    background-color: #007bff;
-    color: white;
-    padding: 12px 20px;
+/* Reusable button styles */
+.btn {
+    padding: var(--space-4) var(--space-5);
     border: none;
-    border-radius: 4px;
+    border-radius: var(--radius-sm);
     cursor: pointer;
     font-size: 16px;
     width: 100%;
     transition: background-color 0.3s ease;
 }
 
-button[type="submit"]:hover {
-    background-color: #0056b3;
+.btn:focus-visible {
+    outline: 2px solid var(--color-primary-hover);
+    outline-offset: 2px;
 }
 
-#resetFormBtn {
-    background-color: #6c757d;
-    color: white;
-    padding: 12px 20px;
-    border: none;
-    border-radius: 4px;
-    cursor: pointer;
-    font-size: 16px;
-    width: 100%;
-    transition: background-color 0.3s ease;
-    margin-top: 5px;
+.btn:disabled {
+    background-color: var(--color-border);
+    cursor: not-allowed;
+    opacity: 0.6;
 }
 
-#resetFormBtn:hover {
-    background-color: #5a6268;
+.btn-primary {
+    background-color: var(--color-primary);
+    color: #fff;
 }
+
+.btn-primary:hover:not(:disabled) {
+    background-color: var(--color-primary-hover);
+}
+
+.btn-secondary {
+    background-color: var(--color-secondary);
+    color: #fff;
+    margin-top: var(--space-2);
+}
+
+.btn-secondary:hover:not(:disabled) {
+    background-color: var(--color-secondary-hover);
+}
+
+/* Badge component */
+.badge {
+    display: inline-block;
+    padding: var(--space-1) var(--space-2);
+    border-radius: var(--radius-sm);
+    background-color: var(--color-badge-bg);
+    border: 1px solid var(--color-badge-border);
+    color: var(--color-text);
+    font-size: 0.85em;
+}
+
+
 
 .results-container {
-    margin-top: 30px;
-    padding: 20px;
-    background-color: #e9ecef;
-    border-radius: 5px;
-    border: 1px solid #ced4da;
+    margin-top: var(--space-6);
+    padding: var(--space-5);
+    background-color: var(--color-results-bg);
+    border-radius: var(--radius-md);
+    border: 1px solid var(--color-results-border);
 }
 
 .results-container p {
-    margin: 8px 0;
+    margin: var(--space-2) 0;
     font-size: 1em;
 }
 
 .results-container p strong {
-    color: #333;
+    color: var(--color-text);
 }
 
 .results-container .score {
     font-size: 1.2em;
     font-weight: bold;
-    color: #007bff;
+    color: var(--color-primary);
     text-align: center;
 }
 
 hr {
     border: 0;
     height: 1px;
-    background: #ccc;
-    margin: 15px 0;
+    background: var(--color-border-light);
+    margin: var(--space-4) 0;
 }
 
 /* Estilo para mensajes de carga o error en los selects */
 select option[value=""] {
-    color: #888;
+    color: var(--color-muted);
 }
 
 #estimatedAudienceSizeContainer {
-    background-color: #f0f9ff;
-    border: 1px solid #cce5ff;
-    padding: 10px;
-    margin-bottom: 20px;
-    border-radius: 5px;
+    background-color: var(--color-badge-bg);
+    border: 1px solid var(--color-badge-border);
+    padding: var(--space-3);
+    margin-bottom: var(--space-4);
+    border-radius: var(--radius-md);
     text-align: center;
 }
 
@@ -199,19 +282,19 @@ select option[value=""] {
 }
 
 #audienceDescriptionContainer {
-    margin-top: 5px;
+    margin-top: var(--space-2);
     /* Padding moved to .audience-description-text for better scrollbar behavior */
     /* background-color: #e9ecef; */ /* Will be overridden by .audience-description-text's background */
-    border-radius: 4px; /* Keep this for the container's rounding */
+    border-radius: var(--radius-sm); /* Keep this for the container's rounding */
     /* font-size: 0.9em; */ /* Will be set on .audience-description-text */
     /* color: #495057; */ /* Will be set on .audience-description-text */
 }
 
 .audience-description-text {
-    background-color: #f9f9f9; /* Light background for the text area */
-    border: 1px solid #e0e0e0; /* Subtle border */
-    border-radius: 4px;       /* Match container's rounding or can be independent */
-    padding: 8px;             /* Padding inside the description box */
+    background-color: var(--color-surface); /* Light background for the text area */
+    border: 1px solid var(--color-border-light); /* Subtle border */
+    border-radius: var(--radius-sm);       /* Match container's rounding or can be independent */
+    padding: var(--space-2);             /* Padding inside the description box */
     margin: 0;                /* Reset margin for the paragraph itself */
     min-height: 40px;         /* Minimum height for 1-2 lines */
     max-height: 120px;        /* Maximum height before scrolling */
@@ -220,5 +303,5 @@ select option[value=""] {
     overflow-wrap: break-word; /* Standard property for word breaking */
     line-height: 1.5;         /* Improve readability */
     font-size: 0.9em;         /* Slightly smaller font for descriptions */
-    color: #333;              /* Default text color for description */
+    color: var(--color-text);              /* Default text color for description */
 }
