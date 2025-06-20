@@ -20,6 +20,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const fechaFinInput = document.getElementById('fechaFin');
     const campaignDurationDisplay = document.getElementById('campaignDurationDisplay');
     const totalCampaignBudgetDisplay = document.getElementById('totalCampaignBudgetDisplay');
+    const resetFormBtn = document.getElementById('resetFormBtn');
 
 
     let allAudiencesData = []; // Variable para almacenar datos de audiencias
@@ -771,6 +772,25 @@ document.addEventListener('DOMContentLoaded', () => {
         fechaFinInput.addEventListener('change', () => {
             updateCampaignSummary();
             updateFormAccess(); // Re-check access
+        });
+    }
+
+    if (resetFormBtn) {
+        resetFormBtn.addEventListener('click', () => {
+            campaignForm.reset();
+            productosSelect.innerHTML = '<option value="" disabled>Selecciona una marca primero...</option>';
+            productSelectionContainer.style.display = 'none';
+            clearInteresCheckboxes();
+            estimatedAudienceDisplay.textContent = 'N/A';
+            audienceSizeChangeIndicator.textContent = '';
+            audienceDescriptionDisplay.textContent = 'Select an audience to see its description.';
+            totalAffinityDisplay.textContent = 'N/A';
+            resultsContainer.style.display = 'none';
+            if (presupuestoValueDisplay) {
+                presupuestoValueDisplay.textContent = parseInt(presupuestoInput.value, 10).toLocaleString('es-CO');
+            }
+            updateCampaignSummary();
+            updateFormAccess();
         });
     }
 
