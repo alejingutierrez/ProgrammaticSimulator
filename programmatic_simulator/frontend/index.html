@@ -22,7 +22,7 @@
 
         <form id="campaignForm">
             <div class="form-group">
-                <label for="marca">Selecciona una Marca:</label>
+                <label for="marca" class="required">Selecciona una Marca:</label>
                 <select id="marca" name="marca" required>
                     <option value="">Cargando marcas...</option>
                 </select>
@@ -36,7 +36,7 @@
             </div>
 
             <div class="form-group">
-                <label for="audiencia">Selecciona una Audiencia:</label>
+                <label for="audiencia" class="required">Selecciona una Audiencia:</label>
                 <select id="audiencia" name="audiencia" required disabled>
                     <option value="">Cargando audiencias...</option>
                 </select>
@@ -46,7 +46,7 @@
             </div>
 
             <div class="form-group">
-                <label for="campaignGoal">Objetivo de la Campaña:</label>
+                <label for="campaignGoal" class="required">Objetivo de la Campaña:</label>
                 <select id="campaignGoal" name="campaignGoal" required disabled>
                     <option value="">Cargando objetivos...</option>
                 </select>
@@ -60,17 +60,17 @@
             </div>
 
             <div class="form-group">
-                <label for="presupuesto">Inversión por día (COP): <span id="presupuestoValueDisplay">100000</span></label>
+                <label for="presupuesto" class="required">Inversión por día (COP): <span id="presupuestoValueDisplay">100000</span></label>
                 <input type="range" id="presupuesto" name="presupuesto" min="10000" max="5000000" step="1000" value="100000" required disabled>
             </div>
 
             <div class="form-group">
-                <label for="fechaInicio">Fecha de inicio:</label>
+                <label for="fechaInicio" class="required">Fecha de inicio:</label>
                 <input type="date" id="fechaInicio" name="fechaInicio" required disabled>
             </div>
 
             <div class="form-group">
-                <label for="fechaFin">Fecha de fin:</label>
+                <label for="fechaFin" class="required">Fecha de fin:</label>
                 <input type="date" id="fechaFin" name="fechaFin" required disabled>
             </div>
 
