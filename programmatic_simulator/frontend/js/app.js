@@ -24,6 +24,10 @@ document.addEventListener('DOMContentLoaded', () => {
     const stepConfig = document.getElementById('stepConfig');
     const stepResults = document.getElementById('stepResults');
     const backToConfigBtn = document.getElementById('backToConfigBtn');
+    const simulateBtn = document.getElementById('simulateBtn');
+    const dateErrorMsg = document.getElementById('dateErrorMsg');
+    const affinityFill = document.getElementById('totalAffinityFill');
+    const audienceTooltip = document.getElementById('audienceTooltip');
 
 
     let allAudiencesData = []; // Variable para almacenar datos de audiencias
@@ -115,28 +119,43 @@ document.addEventListener('DOMContentLoaded', () => {
                 return;
             }
 
+            const grupos = {};
             intereses.forEach(interes => {
-                const itemDiv = document.createElement('div');
-                itemDiv.classList.add('checkbox-item');
+                const cat = interes.categoria_interes || 'Otros';
+                if(!grupos[cat]) grupos[cat] = [];
+                grupos[cat].push(interes);
+            });
 
-                const checkbox = document.createElement('input');
-                checkbox.type = 'checkbox';
-                checkbox.id = `interes-${interes.id}`;
-                checkbox.value = interes.id;
-                checkbox.name = 'interes_selection';
-                // Add event listener to each checkbox for updating audience estimate and total affinity
-                checkbox.addEventListener('change', () => {
-                    updateEstimatedAudienceSize();
-                    updateTotalAffinity();
+            Object.keys(grupos).forEach(cat => {
+                const details = document.createElement('details');
+                const summary = document.createElement('summary');
+                summary.textContent = cat;
+                details.appendChild(summary);
+
+                grupos[cat].forEach(interes => {
+                    const itemDiv = document.createElement('div');
+                    itemDiv.classList.add('checkbox-item');
+
+                    const checkbox = document.createElement('input');
+                    checkbox.type = 'checkbox';
+                    checkbox.id = `interes-${interes.id}`;
+                    checkbox.value = interes.id;
+                    checkbox.name = 'interes_selection';
+                    checkbox.addEventListener('change', () => {
+                        updateEstimatedAudienceSize();
+                        updateTotalAffinity();
+                    });
+
+                    const label = document.createElement('label');
+                    label.htmlFor = `interes-${interes.id}`;
+                    label.textContent = interes.nombre;
+
+                    itemDiv.appendChild(checkbox);
+                    itemDiv.appendChild(label);
+                    details.appendChild(itemDiv);
                 });
 
-                const label = document.createElement('label');
-                label.htmlFor = `interes-${interes.id}`;
-                label.textContent = interes.nombre + (interes.categoria_interes ? ` (${interes.categoria_interes})` : "");
-
-                itemDiv.appendChild(checkbox);
-                itemDiv.appendChild(label);
-                interesesCheckboxContainer.appendChild(itemDiv);
+                interesesCheckboxContainer.appendChild(details);
             });
         } catch (error) {
             console.error('Error al cargar intereses:', error);
@@ -445,14 +464,23 @@ document.addEventListener('DOMContentLoaded', () => {
         if (selectedAudienceId && allAudiencesData.length > 0) {
             const selectedAudience = allAudiencesData.find(aud => aud.id === selectedAudienceId);
             if (selectedAudience && selectedAudience.descripcion) {
-                audienceDescriptionDisplay.textContent = selectedAudience.descripcion;
+                const fullText = selectedAudience.descripcion;
+                const shortText = fullText.length > 80 ? fullText.slice(0, 77) + '...' : fullText;
+                audienceDescriptionDisplay.textContent = shortText;
+                if (audienceTooltip) {
+                    audienceTooltip.style.display = fullText.length > 80 ? 'inline' : 'none';
+                    audienceTooltip.title = fullText;
+                }
             } else if (selectedAudience) { // Audience found but no description
                 audienceDescriptionDisplay.textContent = "Descripción no disponible para esta audiencia.";
+                if (audienceTooltip) audienceTooltip.style.display = 'none';
             } else { // Audience ID selected but not found in data (should not happen if data is consistent)
                 audienceDescriptionDisplay.textContent = "Detalles de audiencia no encontrados.";
+                if (audienceTooltip) audienceTooltip.style.display = 'none';
             }
         } else {
             audienceDescriptionDisplay.textContent = "Select an audience to see its description.";
+            if (audienceTooltip) audienceTooltip.style.display = 'none';
         }
     }
 
@@ -485,6 +513,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const selectedInteresIds = Array.from(selectedInteresCheckboxes).map(cb => cb.value);
 
         totalAffinityDisplay.textContent = 'Calculating...';
+        if (affinityFill) affinityFill.style.width = '0%';
 
         try {
             const response = await fetch('/api/calculate-affinity', {
@@ -503,21 +532,36 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (affinityData.error) {
                     totalAffinityDisplay.textContent = 'Error: ' + affinityData.error;
                     console.error('Affinity calculation error:', affinityData.error);
+                    if (affinityFill) affinityFill.style.width = '0%';
                 } else if (affinityData.overall_affinity !== undefined) {
-                    const formattedAffinity = (affinityData.overall_affinity * 100).toFixed(1) + '%';
+                    const percent = (affinityData.overall_affinity * 100);
+                    const formattedAffinity = percent.toFixed(1) + '%';
                     totalAffinityDisplay.textContent = formattedAffinity;
+                    if (affinityFill) {
+                        affinityFill.style.width = Math.min(100, percent) + '%';
+                        if (percent >= 70) {
+                            affinityFill.style.backgroundColor = '#28a745';
+                        } else if (percent >= 40) {
+                            affinityFill.style.backgroundColor = '#ffc107';
+                        } else {
+                            affinityFill.style.backgroundColor = '#dc3545';
+                        }
+                    }
                 } else {
                     totalAffinityDisplay.textContent = 'Invalid data';
                     console.error('Invalid affinity data received:', affinityData);
+                    if (affinityFill) affinityFill.style.width = '0%';
                 }
             } else {
                 const errorText = await response.text();
                 totalAffinityDisplay.textContent = 'Error calculating affinity';
                 console.error('Error fetching affinity:', response.status, errorText);
+                if (affinityFill) affinityFill.style.width = '0%';
             }
         } catch (error) {
             totalAffinityDisplay.textContent = 'API error';
             console.error('Failed to fetch total affinity:', error);
+            if (affinityFill) affinityFill.style.width = '0%';
         }
     }
 
@@ -620,6 +664,22 @@ document.addEventListener('DOMContentLoaded', () => {
             updateTotalAffinity();
         } else {
             if(totalAffinityDisplay) totalAffinityDisplay.textContent = 'N/A';
+            if(affinityFill) affinityFill.style.width = '0%';
+        }
+
+        // Enable simulate button only when required fields are valid
+        let canSimulate = marcaSelected && audienciaSelected && campaignGoalSelected;
+        if(canSimulate){
+            const startDate = fechaInicioInput.value;
+            const endDate = fechaFinInput.value;
+            if(startDate && endDate && new Date(endDate) >= new Date(startDate)){
+                canSimulate = true;
+            } else {
+                canSimulate = false;
+            }
+        }
+        if(simulateBtn){
+            simulateBtn.disabled = !canSimulate;
         }
         // updateCampaignSummary(); // Call at the end to ensure summary reflects current state
         // This is called by date/budget listeners, and also needs to be called if disabling fields resets them
@@ -790,12 +850,23 @@ document.addEventListener('DOMContentLoaded', () => {
                     fechaFinInput.value = ""; // Clear end date if it's now before start date
                 }
             }
+            if(dateErrorMsg){
+                dateErrorMsg.style.display = 'none';
+            }
             updateCampaignSummary();
             updateFormAccess(); // Re-check access in case date validation affects other fields (though not currently implemented)
         });
     }
     if (fechaFinInput) {
         fechaFinInput.addEventListener('change', () => {
+            if(fechaInicioInput.value && fechaFinInput.value && fechaFinInput.value < fechaInicioInput.value){
+                if(dateErrorMsg){
+                    dateErrorMsg.textContent = 'La fecha de fin no puede ser anterior al inicio';
+                    dateErrorMsg.style.display = 'block';
+                }
+            } else if(dateErrorMsg){
+                dateErrorMsg.style.display = 'none';
+            }
             updateCampaignSummary();
             updateFormAccess(); // Re-check access
         });

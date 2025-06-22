@@ -143,6 +143,9 @@ button[type="submit"],
     background-color: var(--color-results-bg);
     border-radius: var(--radius-md);
     line-height: 1.4;
+    position: sticky;
+    top: 0;
+    z-index: 1;
 }
 
 #campaignSummaryContainer h4 {
@@ -230,6 +233,16 @@ input[type="range"]::-moz-range-thumb {
     padding: var(--space-3); /* Increased padding a bit */
     border-radius: var(--radius-sm); /* Added border-radius for consistency */
     background-color: var(--color-surface); /* Ensure background is white */
+}
+
+.checkbox-container details {
+    margin-bottom: var(--space-2);
+}
+
+.checkbox-container summary {
+    cursor: pointer;
+    font-weight: bold;
+    margin-bottom: var(--space-1);
 }
 
 .checkbox-item {
@@ -451,3 +464,40 @@ select option[value=""] {
 .metric-bad .metric-circle,
 .metric-bad .metric-bar-fill { background-color: #f8d7da; }
 .metric-bad { color: #721c24; }
+
+.affinity-bar {
+    width: 100%;
+    height: 8px;
+    background-color: var(--color-border-light);
+    border-radius: var(--radius-sm);
+    margin-top: var(--space-2);
+    position: relative;
+}
+
+#totalAffinityFill {
+    height: 100%;
+    width: 0;
+    border-radius: var(--radius-sm);
+    background-color: #007bff;
+}
+
+.tooltip-link {
+    cursor: pointer;
+    color: var(--color-primary);
+    margin-left: var(--space-2);
+    text-decoration: underline;
+    font-size: 0.85em;
+}
+
+.error-message {
+    color: red;
+    font-size: 0.85em;
+    margin-top: var(--space-1);
+}
+
+.app-footer {
+    text-align: center;
+    margin-top: var(--space-6);
+    font-size: 0.9em;
+    color: var(--color-muted);
+}
