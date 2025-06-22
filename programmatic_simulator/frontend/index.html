@@ -19,11 +19,12 @@
 
         <div id="totalAffinityContainer">
             <p>Total Estimated Affinity: <span id="totalAffinityDisplay">N/A</span></p>
+            <div id="totalAffinityBar" class="affinity-bar"><div id="totalAffinityFill"></div></div>
         </div>
 
         <form id="campaignForm">
             <div class="form-group">
-                <label for="marca" class="required">Selecciona una Marca:</label>
+                <label for="marca" class="required">Marca:</label>
                 <select id="marca" name="marca" required>
                     <option value="">Cargando marcas...</option>
                 </select>
@@ -43,6 +44,7 @@
                 </select>
                 <div id="audienceDescriptionContainer">
                     <p id="audienceDescriptionDisplay" class="audience-description-text">Select an audience to see its description.</p>
+                    <span id="audienceTooltip" class="tooltip-link" style="display:none;">ver más</span>
                 </div>
             </div>
 
@@ -54,7 +56,7 @@
             </div>
 
             <div class="form-group">
-                <label for="interesesCheckboxContainer">Selecciona Intereses (opcional):</label>
+                <label for="interesesCheckboxContainer">Intereses (opcional):</label>
                 <div id="interesesCheckboxContainer" class="checkbox-container disabled-selection-area">
                     <!-- Checkboxes will be populated here by JavaScript -->
                 </div>
@@ -73,6 +75,7 @@
             <div class="form-group">
                 <label for="fechaFin" class="required">Fecha de fin:</label>
                 <input type="date" id="fechaFin" name="fechaFin" required disabled>
+                <p id="dateErrorMsg" class="error-message" style="display:none;"></p>
             </div>
 
             <div id="campaignSummaryContainer">
@@ -81,7 +84,7 @@
                 <p>Presupuesto total estimado: <span id="totalCampaignBudgetDisplay">N/A</span> COP</p>
             </div>
 
-            <button type="submit" class="btn btn-primary">Simular Campaña</button>
+            <button type="submit" id="simulateBtn" class="btn btn-primary" disabled>Simular Campaña</button>
             <button type="button" id="resetFormBtn" class="btn btn-secondary">Limpiar Formulario</button>
         </form>
         </div>
@@ -135,5 +138,8 @@
     </div>
 
     <script src="js/app.js"></script>
+    <footer class="app-footer">
+        <p>Contacto: soporte@example.com | v1.0 - 2024-06-20</p>
+    </footer>
 </body>
 </html>
