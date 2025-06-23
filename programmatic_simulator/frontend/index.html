@@ -31,7 +31,7 @@
             </div>
 
             <div class="form-group" id="productSelectionContainer" style="display:none;">
-                <label for="productos">Selecciona Productos (opcional):</label>
+                <label for="productos">Productos <span class="optional-label">opcional</span>:</label>
                 <select id="productos" name="productos" multiple disabled>
                     <option value="" disabled>Selecciona una marca primero...</option>
                 </select>
@@ -49,21 +49,22 @@
             </div>
 
             <div class="form-group">
-                <label for="campaignGoal" class="required">Objetivo de la Campaña:</label>
+                <label for="campaignGoal" class="required">Objetivo 🎯:</label>
                 <select id="campaignGoal" name="campaignGoal" required disabled>
                     <option value="">Cargando objetivos...</option>
                 </select>
             </div>
 
             <div class="form-group">
-                <label for="interesesCheckboxContainer">Intereses (opcional):</label>
+                <label for="interesesCheckboxContainer">Intereses <span class="optional-label">opcional</span>:</label>
+                <input type="text" id="interesSearch" placeholder="Buscar intereses">
                 <div id="interesesCheckboxContainer" class="checkbox-container disabled-selection-area">
                     <!-- Checkboxes will be populated here by JavaScript -->
                 </div>
             </div>
 
             <div class="form-group">
-                <label for="presupuesto" class="required">Inversión por día (COP): <span id="presupuestoValueDisplay">100000</span></label>
+                <label for="presupuesto" class="required">Inversión diaria máx. 💰 (COP): <span id="presupuestoValueDisplay">100000</span></label>
                 <input type="range" id="presupuesto" name="presupuesto" min="10000" max="5000000" step="1000" value="100000" required disabled>
             </div>
 
@@ -84,7 +85,7 @@
                 <p>Presupuesto total estimado: <span id="totalCampaignBudgetDisplay">N/A</span> COP</p>
             </div>
 
-            <button type="submit" id="simulateBtn" class="btn btn-primary" disabled>Simular Campaña</button>
+            <button type="submit" id="simulateBtn" class="btn btn-primary" disabled>Calcular resultados</button>
             <button type="button" id="resetFormBtn" class="btn btn-secondary">Limpiar Formulario</button>
         </form>
         </div>
@@ -139,7 +140,7 @@
 
     <script src="js/app.js"></script>
     <footer class="app-footer">
-        <p>Contacto: soporte@example.com | v1.0 - 2024-06-20</p>
+        <p>Contacto: soporte@example.com | v1.0 - 2024-06-20 | <a href="https://example.com/manual-estilo" target="_blank">Manual de estilo</a></p>
     </footer>
 </body>
 </html>

@@ -231,7 +231,7 @@ def simular_campana(marca_id, audiencia_id, presupuesto, selected_interes_ids=No
         try:
             # Ensure campaign_duration_days is an int for calculations if it comes as string/float
             duration_days_int = int(campaign_duration_days)
-            mensajes_feedback.append(f"INFO: La campaña está configurada para una duración de {duration_days_int} día(s).")
+            mensajes_feedback.append(f"INFO: Campaña de {duration_days_int} día(s).")
 
             # Calculate equivalent monthly budget for comparison thresholds
             # If campaign is 15 days, its budget is compared as if it were for 30 days (budget * 2)

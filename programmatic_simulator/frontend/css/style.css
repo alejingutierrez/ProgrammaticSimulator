@@ -227,7 +227,7 @@ input[type="range"]::-moz-range-thumb {
 
 /* Styling for the new checkbox container */
 .checkbox-container {
-    max-height: 150px; /* Or your desired height */
+    max-height: 200px; /* Show up to ~10 items */
     overflow-y: auto;
     border: 1px solid var(--color-border-light);
     padding: var(--space-3); /* Increased padding a bit */
@@ -261,6 +261,21 @@ input[type="range"]::-moz-range-thumb {
 .checkbox-item label {
     font-weight: normal; /* Labels inside checkbox container might not need to be bold */
     vertical-align: middle;
+}
+
+.optional-label {
+    color: var(--color-muted);
+    font-weight: normal;
+    font-size: 0.85em;
+    margin-left: var(--space-1);
+}
+
+#interesSearch {
+    width: 100%;
+    margin-bottom: var(--space-2);
+    padding: var(--space-2);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-sm);
 }
 
 /* Reusable button styles */
@@ -314,6 +329,9 @@ input[type="range"]::-moz-range-thumb {
     color: var(--color-text);
     font-size: 0.85em;
 }
+.badge-info { background-color: #d1ecf1; border-color: #bee5eb; color: #0c5460; }
+.badge-mejora { background-color: #d4edda; border-color: #c3e6cb; color: #155724; }
+.badge-alerta { background-color: #f8d7da; border-color: #f5c6cb; color: #721c24; }
 
 
 
@@ -451,6 +469,10 @@ select option[value=""] {
 .metric-number {
     margin-top: var(--space-2);
     font-weight: bold;
+}
+
+#ctrCard .metric-number {
+    text-align: right;
 }
 
 .metric-good .metric-circle,
