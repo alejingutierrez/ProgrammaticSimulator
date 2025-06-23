@@ -16,6 +16,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const audienceSizeChangeIndicator = document.getElementById('audienceSizeChangeIndicator'); // For displaying size changes
     const totalAffinityDisplay = document.getElementById('totalAffinityDisplay'); // For displaying total affinity
     const presupuestoValueDisplay = document.getElementById('presupuestoValueDisplay'); // For budget slider value
+    const interesSearch = document.getElementById('interesSearch');
     const fechaInicioInput = document.getElementById('fechaInicio');
     const fechaFinInput = document.getElementById('fechaFin');
     const campaignDurationDisplay = document.getElementById('campaignDurationDisplay');
@@ -155,12 +156,24 @@ document.addEventListener('DOMContentLoaded', () => {
                     details.appendChild(itemDiv);
                 });
 
-                interesesCheckboxContainer.appendChild(details);
-            });
+            interesesCheckboxContainer.appendChild(details);
+        });
+        filterInterests();
         } catch (error) {
             console.error('Error al cargar intereses:', error);
             interesesCheckboxContainer.innerHTML = '<p>Error al cargar intereses. Intenta recargar.</p>';
         }
+    }
+
+    function filterInterests() {
+        if (!interesSearch) return;
+        const term = interesSearch.value.toLowerCase();
+        const items = interesesCheckboxContainer.querySelectorAll('.checkbox-item');
+        items.forEach(item => {
+            const label = item.querySelector('label');
+            const text = label ? label.textContent.toLowerCase() : '';
+            item.style.display = text.includes(term) ? 'block' : 'none';
+        });
     }
 
 
@@ -255,8 +268,8 @@ document.addEventListener('DOMContentLoaded', () => {
             }
             const data = await response.json();
 
-            allBrandsData = data.marcas || []; // Guardar todas las marcas con sus productos
-            allAudiencesData = data.audiencias || []; // Guardar datos de audiencias (ya estaba)
+            allBrandsData = (data.marcas || []).sort((a,b) => a.nombre.localeCompare(b.nombre));
+            allAudiencesData = (data.audiencias || []).sort((a,b) => a.nombre.localeCompare(b.nombre));
 
             cargarSelect(marcaSelect, allBrandsData, "Selecciona una marca");
             cargarSelect(audienciaSelect, allAudiencesData, "Selecciona una audiencia");
@@ -288,7 +301,12 @@ document.addEventListener('DOMContentLoaded', () => {
             document.getElementById('resPuntuacion').textContent = data.puntuacion !== undefined ? data.puntuacion : 'N/A';
             document.getElementById('resAfinidad').textContent = data.afinidad_marca_audiencia !== undefined ? (data.afinidad_marca_audiencia * 100).toFixed(0) + '%' : 'N/A';
             document.getElementById('resImpresiones').textContent = data.impresiones?.toLocaleString('es-CO') || 'N/A';
-            document.getElementById('resCTR').textContent = data.ctr_calculado !== undefined ? (data.ctr_calculado * 100).toFixed(3) : 'N/A';
+            if (data.ctr_calculado !== undefined) {
+                const ctrFormatted = (data.ctr_calculado * 100).toFixed(2).replace('.', ',');
+                document.getElementById('resCTR').textContent = ctrFormatted;
+            } else {
+                document.getElementById('resCTR').textContent = 'N/A';
+            }
             document.getElementById('resPresupuestoGastado').textContent = data.presupuesto_gastado?.toLocaleString('es-CO', { style: 'currency', currency: 'COP' }) || 'N/A';
             document.getElementById('resMensaje').textContent = data.mensaje || '';
 
@@ -351,7 +369,23 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (data.mensajes_feedback && data.mensajes_feedback.length > 0) {
                     data.mensajes_feedback.forEach(message => {
                         const listItem = document.createElement('li');
-                        listItem.textContent = message;
+                        let type = 'info';
+                        let text = message;
+                        if (message.startsWith('INFO:')) {
+                            type = 'info';
+                            text = message.replace('INFO:', '').trim();
+                        } else if (message.startsWith('SUGERENCIA:')) {
+                            type = 'mejora';
+                            text = message.replace('SUGERENCIA:', '').trim();
+                        } else if (message.startsWith('ALERTA:')) {
+                            type = 'alerta';
+                            text = message.replace('ALERTA:', '').trim();
+                        }
+                        const badge = document.createElement('span');
+                        badge.classList.add('badge', `badge-${type}`);
+                        badge.textContent = type.charAt(0).toUpperCase() + type.slice(1);
+                        listItem.appendChild(badge);
+                        listItem.append(' ' + text);
                         feedbackListUl.appendChild(listItem);
                     });
                     feedbackSectionDiv.style.display = 'block'; // Show the section
@@ -428,10 +462,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
                 if (previousAudienceSize !== null) {
                     if (newAudienceSize > previousAudienceSize) {
-                        audienceSizeChangeIndicator.textContent = ' (Increased ↑)';
+                        audienceSizeChangeIndicator.textContent = ' ↑';
                         audienceSizeChangeIndicator.className = 'size-increased';
                     } else if (newAudienceSize < previousAudienceSize) {
-                        audienceSizeChangeIndicator.textContent = ' (Decreased ↓)';
+                        audienceSizeChangeIndicator.textContent = ' ↓';
                         audienceSizeChangeIndicator.className = 'size-decreased';
                     } else {
                         audienceSizeChangeIndicator.textContent = ' (No change)';
@@ -712,7 +746,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
         const totalBudget = dailyInvestment * diffDays;
 
-        campaignDurationDisplay.textContent = diffDays;
+        const weeks = Math.floor(diffDays / 7);
+        const remDays = diffDays % 7;
+        let durationText = `${diffDays} días`;
+        if (weeks > 0) {
+            durationText += ` (${weeks} sem y ${remDays} días)`;
+        }
+        campaignDurationDisplay.textContent = durationText;
         totalCampaignBudgetDisplay.textContent = totalBudget.toLocaleString('es-CO');
     }
 
@@ -728,7 +768,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 productSelectionContainer.style.display = 'block';
                 const placeholderOption = document.createElement('option');
                 placeholderOption.value = "";
-                placeholderOption.textContent = "Selecciona uno o más productos (opcional)";
+                placeholderOption.textContent = "Selecciona productos (opcional)";
                 // placeholderOption.disabled = true; // Not strictly needed if it's just a label
                 productosSelect.appendChild(placeholderOption);
 
@@ -740,12 +780,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 });
             } else {
                 // No products for this brand
-                productSelectionContainer.style.display = 'block'; // Show container
-                const noProductsOption = document.createElement('option');
-                noProductsOption.value = "";
-                noProductsOption.textContent = "No hay productos para esta marca";
-                noProductsOption.disabled = true;
-                productosSelect.appendChild(noProductsOption);
+                productSelectionContainer.style.display = 'none';
             }
         } else {
             // No brand selected
@@ -787,8 +822,8 @@ document.addEventListener('DOMContentLoaded', () => {
             }
             const data = await response.json();
 
-            allBrandsData = data.marcas || []; // Guardar todas las marcas con sus productos
-            allAudiencesData = data.audiencias || []; // Guardar datos de audiencias
+            allBrandsData = (data.marcas || []).sort((a,b) => a.nombre.localeCompare(b.nombre));
+            allAudiencesData = (data.audiencias || []).sort((a,b) => a.nombre.localeCompare(b.nombre));
 
             cargarSelect(marcaSelect, allBrandsData, "Selecciona una marca");
             // Usar allAudiencesData para poblar el select, ya que contiene la info completa
@@ -842,6 +877,9 @@ document.addEventListener('DOMContentLoaded', () => {
             updateCampaignSummary();
         });
     }
+    if (interesSearch) {
+        interesSearch.addEventListener('input', filterInterests);
+    }
     if (fechaInicioInput) {
         fechaInicioInput.addEventListener('change', () => {
             if (fechaInicioInput.value && fechaFinInput) {
@@ -886,6 +924,10 @@ document.addEventListener('DOMContentLoaded', () => {
             if (presupuestoValueDisplay) {
                 presupuestoValueDisplay.textContent = parseInt(presupuestoInput.value, 10).toLocaleString('es-CO');
             }
+            if (interesSearch) {
+                interesSearch.value = '';
+            }
+            filterInterests();
             updateCampaignSummary();
             updateFormAccess();
             showConfigStep();

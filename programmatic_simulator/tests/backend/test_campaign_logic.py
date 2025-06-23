@@ -647,7 +647,7 @@ class TestCampaignLogic(unittest.TestCase):
     def test_feedback_campaign_duration_info(self):
         duration = 15
         result = simular_campana(self.MARCA_RETAIL_ID, self.AUD_FAMILIAS_ID, self.PRESUPUESTO_MEDIO, [], None, [], campaign_duration_days=duration)
-        self.assertFeedbackContains(result['mensajes_feedback'], f"configurada para una duración de {duration} día(s)")
+        self.assertFeedbackContains(result['mensajes_feedback'], f"Campaña de {duration} día(s)")
 
     def test_feedback_campaign_duration_long_low_budget(self):
         # Daily budget = 50000 / 60 = 833. Threshold daily low for min impact = 50000/30 = 1666. 833 < 1666 * 1.5 (2499)
